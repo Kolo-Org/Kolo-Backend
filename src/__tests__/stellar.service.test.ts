@@ -35,6 +35,9 @@ jest.mock('@stellar/stellar-sdk', () => {
         Keypair: {
             fromSecret: jest.fn().mockReturnValue(mKeypair),
             random: jest.fn().mockReturnValue(mKeypair)
+        },
+        Operation: {
+            payment: jest.fn().mockReturnValue({})
         }
     };
 });
@@ -76,7 +79,8 @@ describe('StellarService', () => {
 
     describe('sendPayment', () => {
         it('should submit transaction and return result', async () => {
-            const result = await stellarService.sendPayment('S_MOCK', 'G_DEST', '10.0');
+            const validPublicKey = 'GBBM6BKZPEHWPI3VK3VNKEJEXTMIGNNCE2ZEXSVEEKSJNDYTK2E4QUDE';
+            const result = await stellarService.sendPayment('S_MOCK', validPublicKey, '10.0');
             expect(result.successful).toBe(true);
             expect(result.hash).toBe('mock_tx_hash');
         });
