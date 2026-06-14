@@ -74,3 +74,10 @@ describe('BotController', () => {
             await botController.handleMessage(mockReq as Request, mockRes as Response);
             expect(mockRes.sendStatus).toHaveBeenCalledWith(200);
         });
+        it('should handle UNKNOWN command', async () => {
+            mockReq = { body: createWebhookPayload('INVALID_CMD') };
+            await botController.handleMessage(mockReq as Request, mockRes as Response);
+            expect(mockRes.sendStatus).toHaveBeenCalledWith(200);
+        });
+    });
+});
