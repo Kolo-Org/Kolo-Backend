@@ -49,3 +49,6 @@ describe('BotController', () => {
     });
     describe('verifyWebhook', () => {
         it('should return challenge for valid verify token', () => {
+            mockReq = {
+                query: { 'hub.mode': 'subscribe', 'hub.verify_token': 'test_token', 'hub.challenge': '12345_challenge' }
+            };
