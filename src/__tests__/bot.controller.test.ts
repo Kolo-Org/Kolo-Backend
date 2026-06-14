@@ -21,3 +21,7 @@ jest.mock('../services/user.service', () => ({
         })
     }))
 }));
+jest.mock('../services/group.service', () => ({
+    GroupService: jest.fn().mockImplementation(() => ({
+        createGroup: jest.fn().mockResolvedValue({ id: 'g1' }),
+        joinGroup: jest.fn().mockResolvedValue({ id: 'gm1' }),
