@@ -25,3 +25,9 @@ jest.mock('../services/group.service', () => ({
     GroupService: jest.fn().mockImplementation(() => ({
         createGroup: jest.fn().mockResolvedValue({ id: 'g1' }),
         joinGroup: jest.fn().mockResolvedValue({ id: 'gm1' }),
+        getGroupStatus: jest.fn().mockResolvedValue([
+            { role: 'CREATOR', groupId: 'g1', group: { name: 'G1', contributionAmount: 10, contributionFrequency: 'MONTHLY', members: [] } }
+        ]),
+        addContribution: jest.fn().mockResolvedValue({ id: 'c1' })
+    }))
+}));
