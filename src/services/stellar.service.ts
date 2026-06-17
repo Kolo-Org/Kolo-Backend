@@ -1,5 +1,6 @@
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { config } from '../config/env';
+import { encrypt } from '../utils/encryption.util';
 
 export class StellarService {
     private server: StellarSdk.Horizon.Server;
@@ -14,9 +15,12 @@ export class StellarService {
 
     public generateWallet() {
         const pair = StellarSdk.Keypair.random();
+        const { encryptedText, iv, authTag } = encrypt(pair.secret());
         return {
             publicKey: pair.publicKey(),
-            secret: pair.secret(),
+            encryptedSecret: encryptedText,
+            iv,
+            authTag,
         };
     }
 

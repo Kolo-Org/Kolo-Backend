@@ -17,7 +17,9 @@ jest.mock('../services/stellar.service', () => {
     const mStellarService = {
         generateWallet: jest.fn(() => ({
             publicKey: 'G_MOCK_PUBLIC_KEY',
-            secret: 'S_MOCK_SECRET_KEY'
+            encryptedSecret: 'ENC_SECRET',
+            iv: 'IV',
+            authTag: 'TAG'
         })),
         fundTestnetAccount: jest.fn().mockResolvedValue(true)
     };
@@ -52,7 +54,7 @@ describe('UserService', () => {
 
         it('should create new user with generated stellar wallet if not found', async () => {
             prismaClientMock.user.findUnique.mockResolvedValueOnce(null);
-            const createdUser = { id: '2', phoneNumber: '0987654321', stellarWallet: 'G_MOCK_PUBLIC_KEY:S_MOCK_SECRET_KEY' };
+            const createdUser = { id: '2', phoneNumber: '0987654321', stellarWallet: 'G_MOCK_PUBLIC_KEY:ENC_SECRET:IV:TAG' };
             prismaClientMock.user.create.mockResolvedValueOnce(createdUser);
 
             const result = await userService.getOrCreateUser('0987654321');
@@ -62,7 +64,7 @@ describe('UserService', () => {
             expect(prismaClientMock.user.create).toHaveBeenCalledWith({
                 data: {
                     phoneNumber: '0987654321',
-                    stellarWallet: 'G_MOCK_PUBLIC_KEY:S_MOCK_SECRET_KEY'
+                    stellarWallet: 'G_MOCK_PUBLIC_KEY:ENC_SECRET:IV:TAG'
                 }
             });
             expect(result).toEqual(createdUser);
