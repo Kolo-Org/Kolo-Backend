@@ -21,7 +21,7 @@ model User {
 model SavingsGroup {
   id                   String         @id @default(uuid())
   name                 String
-  contributionAmount   Float
+  contributionAmount   Decimal
   contributionFrequency String        // e.g., "WEEKLY", "MONTHLY"
   stellarContractId    String?        // Soroban contract ID once deployed
   createdAt            DateTime       @default(now())
@@ -46,7 +46,7 @@ model Contribution {
   user           User          @relation(fields: [userId], references: [id])
   userId         String
   groupId        String
-  amount         Float
+  amount         Decimal
   transactionHash String?
   status         String        @default("PENDING") // PENDING, COMPLETED, FAILED
   createdAt      DateTime      @default(now())
