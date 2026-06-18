@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
 import Redis from 'ioredis';
 import { config } from '../config/env';
@@ -17,7 +17,8 @@ export const customKeyGenerator = (req: any): string => {
     }
 
     // Fallback to IP address (e.g., for webhook verification GET requests)
-    return req.ip || req.socket?.remoteAddress || 'unknown';
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    return ip !== 'unknown' ? ipKeyGenerator(ip) : ip;
 };
 
 export const webhookRateLimiter = rateLimit({
