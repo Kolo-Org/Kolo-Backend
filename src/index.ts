@@ -1,6 +1,7 @@
 import express from 'express';
 import botRoutes from './routes/bot.routes';
 import { config } from './config/env';
+import { startWorker } from './workers/message.worker';
 
 const app = express();
 
@@ -14,4 +15,5 @@ app.get('/', (req, res) => {
 
 app.listen(config.PORT, () => {
     console.log(`Server is listening on port ${config.PORT}`);
+    startWorker();
 });

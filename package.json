@@ -21,8 +21,10 @@
     "@prisma/client": "^5.11.0",
     "@stellar/stellar-sdk": "^15.1.0",
     "axios": "^1.17.0",
+    "bullmq": "^5.79.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "ioredis": "^5.11.1",
     "pg": "^8.21.0"
   },
   "devDependencies": {
