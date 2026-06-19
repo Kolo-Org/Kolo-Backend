@@ -39,6 +39,8 @@ model GroupMember {
   joinedAt       DateTime      @default(now())
 
   @@unique([userId, groupId])
+  @@index([userId])
+  @@index([groupId])
 }
 
 model Contribution {
@@ -50,4 +52,7 @@ model Contribution {
   transactionHash String?
   status         String        @default("PENDING") // PENDING, COMPLETED, FAILED
   createdAt      DateTime      @default(now())
+
+  @@index([userId])
+  @@index([groupId])
 }
