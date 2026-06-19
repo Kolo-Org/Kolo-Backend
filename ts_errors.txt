@@ -1,0 +1,45 @@
+src/services/group.service.ts(1,10): error TS2440: Import declaration conflicts with local declaration of 'prisma'.
+src/services/locale.service.ts(1,21): error TS2307: Cannot find module 'i18next' or its corresponding type declarations.
+src/services/message-processor.service.ts(73,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(83,65): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(87,54): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(94,13): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(114,65): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(123,65): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(130,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(134,41): error TS2304: Cannot find name 'sender'.
+src/services/message-processor.service.ts(141,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(146,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(152,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(162,65): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(174,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(181,13): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(189,13): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(198,65): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(212,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(217,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(227,65): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(233,58): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(237,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(247,65): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(255,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(265,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(272,13): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(280,13): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(292,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(296,26): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(298,27): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(311,15): error TS2451: Cannot redeclare block-scoped variable 'user'.
+src/services/message-processor.service.ts(315,65): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(322,15): error TS2451: Cannot redeclare block-scoped variable 'user'.
+src/services/message-processor.service.ts(326,65): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(334,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(340,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(345,17): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(351,15): error TS2451: Cannot redeclare block-scoped variable 'user'.
+src/services/message-processor.service.ts(355,65): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(362,15): error TS2451: Cannot redeclare block-scoped variable 'user'.
+src/services/message-processor.service.ts(366,65): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(372,13): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(378,54): error TS2304: Cannot find name 't'.
+src/services/message-processor.service.ts(383,54): error TS2304: Cannot find name 't'.

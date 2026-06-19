@@ -1,8 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { PrismaClient, Prisma } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
+import { Prisma } from '@prisma/client';
 export class GroupService {
     public async createGroup(userId: string, name: string, amount: string | Prisma.Decimal, frequency: string) {
         return await prisma.savingsGroup.create({

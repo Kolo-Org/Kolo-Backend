@@ -1,0 +1,123 @@
+  console.log
+    ◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+  console.error
+    Error: Insufficient balance
+        at Object.<anonymous> (/home/femi-john/Documents/Grant/Kolo-Backend/src/__tests__/message-processor.service.test.ts:158:51)
+        at Promise.finally.completed (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1501:10)
+        at _callCircusTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1011:40)
+        at _runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:951:3)
+        at /home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:853:7
+        at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:866:11)
+        at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+        at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+        at run (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:765:3)
+        at runAndTransformResultsToJestFormat (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1993:21)
+        at jestAdapter (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/runner.js:111:19)
+        at runTestInternal (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/index.js:276:16)
+        at runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/index.js:344:7)
+
+      148 |             );
+      149 |         } catch (e: any) {
+    > 150 |             console.error(e);
+          |                     ^
+      151 |             await this.whatsappService.sendMessage(
+      152 |                 from,
+      153 |                 t('send.failed', lang, { message: e.message || 'Transaction error' }),
+
+      at MessageProcessor.handleSend (src/services/message-processor.service.ts:150:21)
+      at MessageProcessor.processCommand (src/services/message-processor.service.ts:56:28)
+      at Object.<anonymous> (src/__tests__/message-processor.service.test.ts:159:13)
+
+  console.error
+    Error processing command: Error: DB connection failed
+        at Object.<anonymous> (/home/femi-john/Documents/Grant/Kolo-Backend/src/__tests__/message-processor.service.test.ts:289:55)
+        at Promise.finally.completed (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1501:10)
+        at _callCircusTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1011:40)
+        at _runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:951:3)
+        at /home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:853:7
+        at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:866:11)
+        at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+        at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+        at run (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:765:3)
+        at runAndTransformResultsToJestFormat (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1993:21)
+        at jestAdapter (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/runner.js:111:19)
+        at runTestInternal (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/index.js:276:16)
+        at runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/index.js:344:7)
+
+      68 |             }
+      69 |         } catch (error: any) {
+    > 70 |             console.error('Error processing command:', error);
+         |                     ^
+      71 |             const user = await this.userService.getOrCreateUser(from).catch(() => ({ language: 'en' }));
+      72 |             await this.whatsappService.sendMessage(
+      73 |                 from,
+
+      at MessageProcessor.processCommand (src/services/message-processor.service.ts:70:21)
+      at Object.<anonymous> (src/__tests__/message-processor.service.test.ts:290:13)
+
+PASS src/__tests__/message-processor.service.test.ts (10.054 s)
+  MessageProcessor
+    processCommand routing
+      ✓ should handle BALANCE command (14 ms)
+      ✓ should handle PROFILE command (4 ms)
+      ✓ should handle HISTORY command (3 ms)
+      ✓ should handle HELP command (3 ms)
+      ✓ should handle SUPPORT command as alias for HELP (6 ms)
+      ✓ should handle UNKNOWN command (6 ms)
+      ✓ should handle CREATE GROUP command (4 ms)
+      ✓ should handle JOIN GROUP command (7 ms)
+      ✓ should handle INVITE MEMBER command (3 ms)
+      ✓ should handle GROUP STATUS command (3 ms)
+      ✓ should handle whitespace-only input as unknown (5 ms)
+    handleSend
+      ✓ should decrypt sender secret and send payment on success (4 ms)
+      ✓ should show usage when insufficient args (6 ms)
+      ✓ should handle missing sender wallet (2 ms)
+      ✓ should handle missing recipient wallet (5 ms)
+      ✓ should handle missing recipient entirely (3 ms)
+      ✓ should handle send payment failure (61 ms)
+    handleContribute
+      ✓ should record contribution and notify on success (2 ms)
+      ✓ should show usage when insufficient args (2 ms)
+      ✓ should handle missing group membership (2 ms)
+      ✓ should handle contribution failure (2 ms)
+    handleRequest
+      ✓ should send request to recipient and confirmation to sender (2 ms)
+      ✓ should show usage when insufficient args (1 ms)
+      ✓ should handle missing recipient (2 ms)
+    handleCreateGroup
+      ✓ should create group with parsed args (1 ms)
+      ✓ should show usage when insufficient args (1 ms)
+      ✓ should handle group creation failure (1 ms)
+    handleJoinGroup
+      ✓ should join group (1 ms)
+      ✓ should show usage when missing groupId (2 ms)
+    handleInviteMember
+      ✓ should show usage when missing target (1 ms)
+      ✓ should handle missing recipient (1 ms)
+      ✓ should handle user not being a group creator (2 ms)
+    handleGroupStatus
+      ✓ should handle no groups (1 ms)
+    handleWithdraw
+      ✓ should show usage when missing amount (1 ms)
+      ✓ should handle no group membership (1 ms)
+      ✓ should confirm withdrawal (1 ms)
+    error handling
+      ✓ should catch and report errors from handlers (34 ms)
+    handleBalance edge cases
+      ✓ should handle missing wallet (4 ms)
+    handleContribute edge cases
+      ✓ should handle invalid amount gracefully (2 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       39 passed, 39 total
+Snapshots:   0 total
+Time:        10.291 s, estimated 40 s
+Ran all test suites matching src/__tests__/message-processor.service.test.ts.

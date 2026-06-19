@@ -59,7 +59,7 @@ describe('MessageProcessor', () => {
 
         it('should handle PROFILE command', async () => {
             await processor.processCommand('12345', 'PROFILE');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('profile.card'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('*Kolo Profile*'));
         });
 
         it('should handle HISTORY command', async () => {
@@ -85,7 +85,7 @@ describe('MessageProcessor', () => {
         it('should handle CREATE GROUP command', async () => {
             await processor.processCommand('12345', 'CREATE GROUP Family 100 WEEKLY');
             expect(mockCreateGroup).toHaveBeenCalledWith('u1', 'Family', '100', 'WEEKLY');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Group'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('create_group.success'));
         });
 
         it('should handle JOIN GROUP command', async () => {
@@ -119,8 +119,8 @@ describe('MessageProcessor', () => {
             expect(mockResolveUser).toHaveBeenCalledWith('@jane');
             expect(mockDecrypt).toHaveBeenCalledWith('ENC_SEC', 'IV', 'TAG');
             expect(mockSendPayment).toHaveBeenCalledWith('S_SEC', 'G_PUB2', '10');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Initiating transfer'));
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Successfully sent'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.initiating'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.success'));
         });
 
         it('should show usage when insufficient args', async () => {
@@ -165,7 +165,7 @@ describe('MessageProcessor', () => {
         it('should record contribution and notify on success', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE 50');
             expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '50', expect.stringContaining('mock_tx_'));
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Successfully contributed'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.success'));
         });
 
         it('should show usage when insufficient args', async () => {

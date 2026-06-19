@@ -1,0 +1,395 @@
+
+> kolo-backend@1.0.0 test
+> jest
+
+FAIL src/__tests__/user.service.test.ts (20.83 s)
+  ● Console
+
+    console.log
+      Created new user for 0987654321 with wallet G_MOCK_PUBLIC_KEY
+
+      at UserService.getOrCreateUser (src/services/user.service.ts:36:21)
+
+    console.error
+      Failed to fund testnet account: Error: Network error
+          at Object.<anonymous> (/home/femi-john/Documents/Grant/Kolo-Backend/src/__tests__/user.service.test.ts:81:73)
+          at Promise.finally.completed (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1501:10)
+          at _callCircusTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1011:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:951:3)
+          at /home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:853:7
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:866:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at run (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:765:3)
+          at runAndTransformResultsToJestFormat (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1993:21)
+          at jestAdapter (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/runner.js:111:19)
+          at runTestInternal (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:276:16)
+          at runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:344:7)
+          at Object.worker (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:498:12)
+
+      16 |                 await stellarService.fundTestnetAccount(wallet.publicKey);
+      17 |             } catch (err) {
+    > 18 |                 console.error('Failed to fund testnet account:', err);
+         |                         ^
+      19 |             }
+      20 |
+      21 |             // Store publicKey:secret in the stellarWallet field for this custodial MVP
+
+      at UserService.getOrCreateUser (src/services/user.service.ts:18:25)
+      at Object.<anonymous> (src/__tests__/user.service.test.ts:91:28)
+
+    console.log
+      Created new user for 1111111111 with wallet G_MOCK_PUBLIC_KEY
+
+      at UserService.getOrCreateUser (src/services/user.service.ts:36:21)
+
+  ● UserService › getOrCreateUser › should create new user with generated stellar wallet if not found
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+      Object {
+        "data": Object {
+    +     "language": "en",
+          "phoneNumber": "0987654321",
+          "stellarWallet": "{\"publicKey\":\"G_MOCK_PUBLIC_KEY\",\"encryptedSecret\":\"ENC_SECRET\",\"iv\":\"IV\",\"authTag\":\"TAG\"}",
+        },
+      },
+
+    Number of calls: 1
+
+      68 |             expect(stellarServiceMock.generateWallet).toHaveBeenCalled();
+      69 |             expect(stellarServiceMock.fundTestnetAccount).toHaveBeenCalledWith('G_MOCK_PUBLIC_KEY');
+    > 70 |             expect(prismaClientMock.user.create).toHaveBeenCalledWith({
+         |                                                  ^
+      71 |                 data: {
+      72 |                     phoneNumber: '0987654321',
+      73 |                     stellarWallet: expectedWallet
+
+      at Object.<anonymous> (src/__tests__/user.service.test.ts:70:50)
+
+FAIL src/__tests__/stellar.service.test.ts (21.151 s)
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      Friendbot successfully funded G_MOCK
+
+      at StellarService.fundTestnetAccount (src/services/stellar.service.ts:46:17)
+
+  ● StellarService › fundTestnetAccount › should log and swallow friendbot failures
+
+    friendbot down
+
+      117 |         it('should log and swallow friendbot failures', async () => {
+      118 |             const axios = require('axios');
+    > 119 |             axios.get.mockRejectedValueOnce(new Error('friendbot down'));
+          |                                             ^
+      120 |             const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      121 |
+      122 |             try {
+
+      at Object.<anonymous> (src/__tests__/stellar.service.test.ts:119:45)
+
+PASS src/__tests__/locale.service.test.ts
+PASS src/__tests__/bot.controller.test.ts
+  ● Console
+
+    console.log
+      WEBHOOK_VERIFIED
+
+      at BotController.verifyWebhook (src/controllers/bot.controller.ts:13:25)
+
+    console.log
+      Received message
+
+      at BotController.handleMessage (src/controllers/bot.controller.ts:38:29)
+
+PASS src/__tests__/group.service.test.ts
+PASS src/__tests__/message.worker.test.ts
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Processing job job-1
+
+      at Object.bullmq_1.Worker.connection.connection [as callback] (src/workers/message.worker.ts:29:21)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.error
+      Job job-2 failed after 2 attempts: Error: Stellar network timeout
+          at Object.<anonymous> (/home/femi-john/Documents/Grant/Kolo-Backend/src/__tests__/message.worker.test.ts:75:21)
+          at Promise.finally.completed (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1501:10)
+          at _callCircusTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1011:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:951:3)
+          at /home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:853:7
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:866:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at run (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:765:3)
+          at runAndTransformResultsToJestFormat (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1993:21)
+          at jestAdapter (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/runner.js:111:19)
+          at runTestInternal (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:276:16)
+          at runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:344:7)
+          at Object.worker (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:498:12)
+
+      41 |
+      42 |     workerInstance.on('failed', (job, err) => {
+    > 43 |         console.error(`Job ${job?.id} failed after ${job?.attemptsMade} attempts:`, err);
+         |                 ^
+      44 |     });
+      45 |
+      46 |     console.log('Message worker started');
+
+      at src/workers/message.worker.ts:43:17
+      at Object.<anonymous> (src/__tests__/message.worker.test.ts:76:9)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Job job-3 completed
+
+      at src/workers/message.worker.ts:39:17
+
+PASS src/__tests__/rateLimiter.test.ts
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+    console.error
+      express-rate-limit: async error during store initialization. TypeError: unexpected reply from redis client
+          at RedisStore.loadIncrementScript (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/rate-limit-redis/dist/index.cjs:106:13)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at async Promise.all (index 0)
+          at RedisStore.init (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/rate-limit-redis/dist/index.cjs:168:5)
+
+      at Object.error (node_modules/express-rate-limit/dist/index.cjs:210:13)
+      at node_modules/express-rate-limit/dist/index.cjs:869:36
+
+FAIL src/__tests__/message-processor.service.test.ts (23.523 s)
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+    console.error
+      Error: Insufficient balance
+          at Object.<anonymous> (/home/femi-john/Documents/Grant/Kolo-Backend/src/__tests__/message-processor.service.test.ts:158:51)
+          at Promise.finally.completed (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1501:10)
+          at _callCircusTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1011:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:951:3)
+          at /home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:853:7
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:866:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at run (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:765:3)
+          at runAndTransformResultsToJestFormat (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1993:21)
+          at jestAdapter (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/runner.js:111:19)
+          at runTestInternal (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:276:16)
+          at runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:344:7)
+          at Object.worker (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:498:12)
+
+      148 |             );
+      149 |         } catch (e: any) {
+    > 150 |             console.error(e);
+          |                     ^
+      151 |             await this.whatsappService.sendMessage(
+      152 |                 from,
+      153 |                 t('send.failed', lang, { message: e.message || 'Transaction error' }),
+
+      at MessageProcessor.handleSend (src/services/message-processor.service.ts:150:21)
+      at MessageProcessor.processCommand (src/services/message-processor.service.ts:56:28)
+      at Object.<anonymous> (src/__tests__/message-processor.service.test.ts:159:13)
+
+    console.error
+      Error processing command: Error: DB connection failed
+          at Object.<anonymous> (/home/femi-john/Documents/Grant/Kolo-Backend/src/__tests__/message-processor.service.test.ts:289:55)
+          at Promise.finally.completed (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1501:10)
+          at _callCircusTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1011:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:951:3)
+          at /home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:853:7
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:866:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at run (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:765:3)
+          at runAndTransformResultsToJestFormat (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1993:21)
+          at jestAdapter (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/runner.js:111:19)
+          at runTestInternal (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:276:16)
+          at runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:344:7)
+          at Object.worker (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:498:12)
+
+      68 |             }
+      69 |         } catch (error: any) {
+    > 70 |             console.error('Error processing command:', error);
+         |                     ^
+      71 |             const user = await this.userService.getOrCreateUser(from).catch(() => ({ language: 'en' }));
+      72 |             await this.whatsappService.sendMessage(
+      73 |                 from,
+
+      at MessageProcessor.processCommand (src/services/message-processor.service.ts:70:21)
+      at Object.<anonymous> (src/__tests__/message-processor.service.test.ts:290:13)
+
+  ● MessageProcessor › processCommand routing › should handle PROFILE command
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "12345", StringContaining "profile.card"
+    Received: "12345", "*Kolo Profile*
+    Phone: 12345
+    Username: john
+    Wallet: G_PUB
+    Joined: Fri Jun 19 2026"
+
+    Number of calls: 1
+
+      60 |         it('should handle PROFILE command', async () => {
+      61 |             await processor.processCommand('12345', 'PROFILE');
+    > 62 |             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('profile.card'));
+         |                                     ^
+      63 |         });
+      64 |
+      65 |         it('should handle HISTORY command', async () => {
+
+      at Object.<anonymous> (src/__tests__/message-processor.service.test.ts:62:37)
+
+  ● MessageProcessor › processCommand routing › should handle CREATE GROUP command
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "12345", StringContaining "Group"
+    Received: "12345", "create_group.success|{\"name\":\"Family\",\"id\":\"g1\"}"
+
+    Number of calls: 1
+
+      86 |             await processor.processCommand('12345', 'CREATE GROUP Family 100 WEEKLY');
+      87 |             expect(mockCreateGroup).toHaveBeenCalledWith('u1', 'Family', '100', 'WEEKLY');
+    > 88 |             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Group'));
+         |                                     ^
+      89 |         });
+      90 |
+      91 |         it('should handle JOIN GROUP command', async () => {
+
+      at Object.<anonymous> (src/__tests__/message-processor.service.test.ts:88:37)
+
+  ● MessageProcessor › handleSend › should decrypt sender secret and send payment on success
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "12345", StringContaining "Initiating transfer"
+    Received
+           1: "12345", "send.initiating|{\"amount\":\"10\",\"target\":\"@jane\"}"
+           2: "12345", "send.success|{\"amount\":\"10\",\"target\":\"@jane\"}"
+
+    Number of calls: 2
+
+      120 |             expect(mockDecrypt).toHaveBeenCalledWith('ENC_SEC', 'IV', 'TAG');
+      121 |             expect(mockSendPayment).toHaveBeenCalledWith('S_SEC', 'G_PUB2', '10');
+    > 122 |             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Initiating transfer'));
+          |                                     ^
+      123 |             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Successfully sent'));
+      124 |         });
+      125 |
+
+      at Object.<anonymous> (src/__tests__/message-processor.service.test.ts:122:37)
+
+  ● MessageProcessor › handleContribute › should record contribution and notify on success
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "12345", StringContaining "Successfully contributed"
+    Received
+           1: "12345", "contribute.initiating|{\"amount\":\"50\",\"groupName\":\"G1\"}"
+           2: "12345", "contribute.success|{\"amount\":\"50\",\"groupName\":\"G1\"}"
+
+    Number of calls: 2
+
+      166 |             await processor.processCommand('12345', 'CONTRIBUTE 50');
+      167 |             expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '50', expect.stringContaining('mock_tx_'));
+    > 168 |             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Successfully contributed'));
+          |                                     ^
+      169 |         });
+      170 |
+      171 |         it('should show usage when insufficient args', async () => {
+
+      at Object.<anonymous> (src/__tests__/message-processor.service.test.ts:168:37)
+
+PASS src/__tests__/message.queue.test.ts
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS src/__tests__/encryption.util.test.ts
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+
+Test Suites: 3 failed, 7 passed, 10 total
+Tests:       6 failed, 99 passed, 105 total
+Snapshots:   0 total
+Time:        26.018 s, estimated 36 s
+Ran all test suites.

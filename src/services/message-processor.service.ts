@@ -3,6 +3,7 @@ import { StellarService } from './stellar.service';
 import { UserService } from './user.service';
 import { GroupService } from './group.service';
 import { decrypt } from '../utils/encryption.util';
+import { t } from './locale.service';
 
 export class MessageProcessor {
     private whatsappService: WhatsAppService;
@@ -107,8 +108,8 @@ export class MessageProcessor {
     }
 
     private async handleSend(from: string, args: string[]) {
-        const user = await this.userService.getOrCreateUser(from);
-        const lang = user.language;
+        const sender = await this.userService.getOrCreateUser(from);
+        const lang = sender.language;
 
         if (args.length < 2) {
             return await this.whatsappService.sendMessage(from, t('send.usage', lang));
@@ -119,7 +120,7 @@ export class MessageProcessor {
         }
         const target = args[1];
 
-        if (!user.stellarWallet) {
+        if (!sender.stellarWallet) {
             return await this.whatsappService.sendMessage(from, t('send.no_wallet', lang));
         }
 
@@ -319,7 +320,6 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
         }
         const amount = amountStr;
-        const user = await this.userService.getOrCreateUser(from);
 
         const memberships = await this.groupService.getGroupStatus(user.id);
         if (memberships.length === 0) {
@@ -359,7 +359,6 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
         }
         const amount = amountStr;
-        const user = await this.userService.getOrCreateUser(from);
 
         const memberships = await this.groupService.getGroupStatus(user.id);
         if (memberships.length === 0) {

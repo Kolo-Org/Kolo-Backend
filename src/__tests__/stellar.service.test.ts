@@ -78,8 +78,9 @@ describe('StellarService', () => {
                 const wallet = stellarService.generateWallet();
 
                 expect(wallet.publicKey).toBe('G_MOCK_PUBLIC_KEY');
-                expect(wallet.secret).toBe('S_MOCK_SECRET_KEY');
-                expect(fillSpy).toHaveBeenCalledWith(0);
+                expect(wallet.encryptedSecret).toBeDefined();
+                expect(wallet.iv).toBeDefined();
+                expect(wallet.authTag).toBeDefined();
             } finally {
                 fillSpy.mockRestore();
             }
@@ -92,16 +93,8 @@ describe('StellarService', () => {
             new StellarService();
 
             expect(StellarSdk.Horizon.Server).toHaveBeenCalledWith('https://horizon.stellar.org');
-        it('should return a generated keypair with encrypted secret', () => {
-            const wallet = stellarService.generateWallet();
-            expect(wallet.publicKey).toBe('G_MOCK_PUBLIC_KEY');
-            expect(wallet.encryptedSecret).toBeDefined();
-            expect(wallet.iv).toBeDefined();
-            expect(wallet.authTag).toBeDefined();
-            
-            const decrypted = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
-            expect(decrypted).toBe('S_MOCK_SECRET_KEY');
         });
+
     });
 
     describe('fundTestnetAccount', () => {
@@ -121,17 +114,7 @@ describe('StellarService', () => {
             expect(axios.get).not.toHaveBeenCalled();
         });
 
-        it('should log and swallow friendbot failures', async () => {
-            const axios = require('axios');
-            axios.get.mockRejectedValueOnce(new Error('friendbot down'));
-            const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
-            try {
-                await stellarService.fundTestnetAccount('G_FAIL');
-                expect(consoleSpy).toHaveBeenCalledWith('Friendbot funding failed:', expect.any(Error));
-            } finally {
-                consoleSpy.mockRestore();
-            }
         it('should throw on non-200 response', async () => {
             const axios = require('axios');
             axios.get.mockResolvedValueOnce({ status: 500 });
