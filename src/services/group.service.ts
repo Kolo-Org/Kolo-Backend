@@ -43,6 +43,13 @@ export class GroupService {
     });
   }
 
+  public async getMembersByGroup(groupId: string) {
+    return await prisma.groupMember.findMany({
+      where: { groupId },
+      include: { user: true },
+    });
+  }
+
   public async addContribution(
     userId: string,
     groupId: string,
@@ -57,6 +64,18 @@ export class GroupService {
         transactionHash: txHash,
         status: 'COMPLETED',
       },
+    });
+  }
+
+  public async getContributionsByUser(userId: string) {
+    return await prisma.contribution.findMany({
+      where: { userId },
+    });
+  }
+
+  public async getContributionsByGroup(groupId: string) {
+    return await prisma.contribution.findMany({
+      where: { groupId },
     });
   }
 }
