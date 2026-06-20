@@ -1,0 +1,284 @@
+
+> kolo-backend@1.0.0 test
+> jest
+
+PASS src/__tests__/user.service.test.ts (19.344 s)
+  ● Console
+
+    console.log
+      Created new user for 0987654321 with wallet G_MOCK_PUBLIC_KEY
+
+      at UserService.getOrCreateUser (src/services/user.service.ts:36:21)
+
+    console.error
+      Failed to fund testnet account: Error: Network error
+          at Object.<anonymous> (/home/femi-john/Documents/Grant/Kolo-Backend/src/__tests__/user.service.test.ts:82:73)
+          at Promise.finally.completed (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1501:10)
+          at _callCircusTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1011:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:951:3)
+          at /home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:853:7
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:866:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at run (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:765:3)
+          at runAndTransformResultsToJestFormat (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1993:21)
+          at jestAdapter (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/runner.js:111:19)
+          at runTestInternal (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:276:16)
+          at runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:344:7)
+          at Object.worker (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:498:12)
+
+      16 |                 await stellarService.fundTestnetAccount(wallet.publicKey);
+      17 |             } catch (err) {
+    > 18 |                 console.error('Failed to fund testnet account:', err);
+         |                         ^
+      19 |             }
+      20 |
+      21 |             // Store publicKey:secret in the stellarWallet field for this custodial MVP
+
+      at UserService.getOrCreateUser (src/services/user.service.ts:18:25)
+      at Object.<anonymous> (src/__tests__/user.service.test.ts:92:28)
+
+    console.log
+      Created new user for 1111111111 with wallet G_MOCK_PUBLIC_KEY
+
+      at UserService.getOrCreateUser (src/services/user.service.ts:36:21)
+
+FAIL src/__tests__/stellar.service.test.ts (22.435 s)
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      Friendbot successfully funded G_MOCK
+
+      at StellarService.fundTestnetAccount (src/services/stellar.service.ts:46:17)
+
+  ● StellarService › fundTestnetAccount › should log and swallow friendbot failures
+
+    friendbot down
+
+      117 |         it('should log and swallow friendbot failures', async () => {
+      118 |             const axios = require('axios');
+    > 119 |             axios.get.mockRejectedValueOnce(new Error('friendbot down'));
+          |                                             ^
+      120 |             const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      121 |
+      122 |             try {
+
+      at Object.<anonymous> (src/__tests__/stellar.service.test.ts:119:45)
+
+PASS src/__tests__/message-processor.service.test.ts (22.525 s)
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+    console.error
+      Error: Insufficient balance
+          at Object.<anonymous> (/home/femi-john/Documents/Grant/Kolo-Backend/src/__tests__/message-processor.service.test.ts:158:51)
+          at Promise.finally.completed (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1501:10)
+          at _callCircusTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1011:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:951:3)
+          at /home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:853:7
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:866:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at run (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:765:3)
+          at runAndTransformResultsToJestFormat (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1993:21)
+          at jestAdapter (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/runner.js:111:19)
+          at runTestInternal (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:276:16)
+          at runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:344:7)
+          at Object.worker (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:498:12)
+
+      148 |             );
+      149 |         } catch (e: any) {
+    > 150 |             console.error(e);
+          |                     ^
+      151 |             await this.whatsappService.sendMessage(
+      152 |                 from,
+      153 |                 t('send.failed', lang, { message: e.message || 'Transaction error' }),
+
+      at MessageProcessor.handleSend (src/services/message-processor.service.ts:150:21)
+      at MessageProcessor.processCommand (src/services/message-processor.service.ts:56:28)
+      at Object.<anonymous> (src/__tests__/message-processor.service.test.ts:159:13)
+
+    console.error
+      Error processing command: Error: DB connection failed
+          at Object.<anonymous> (/home/femi-john/Documents/Grant/Kolo-Backend/src/__tests__/message-processor.service.test.ts:289:55)
+          at Promise.finally.completed (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1501:10)
+          at _callCircusTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1011:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:951:3)
+          at /home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:853:7
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:866:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at run (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:765:3)
+          at runAndTransformResultsToJestFormat (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1993:21)
+          at jestAdapter (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/runner.js:111:19)
+          at runTestInternal (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:276:16)
+          at runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:344:7)
+          at Object.worker (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:498:12)
+
+      68 |             }
+      69 |         } catch (error: any) {
+    > 70 |             console.error('Error processing command:', error);
+         |                     ^
+      71 |             const user = await this.userService.getOrCreateUser(from).catch(() => ({ language: 'en' }));
+      72 |             await this.whatsappService.sendMessage(
+      73 |                 from,
+
+      at MessageProcessor.processCommand (src/services/message-processor.service.ts:70:21)
+      at Object.<anonymous> (src/__tests__/message-processor.service.test.ts:290:13)
+
+PASS src/__tests__/message.worker.test.ts
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Processing job job-1
+
+      at Object.bullmq_1.Worker.connection.connection [as callback] (src/workers/message.worker.ts:29:21)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.error
+      Job job-2 failed after 2 attempts: Error: Stellar network timeout
+          at Object.<anonymous> (/home/femi-john/Documents/Grant/Kolo-Backend/src/__tests__/message.worker.test.ts:75:21)
+          at Promise.finally.completed (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1501:10)
+          at _callCircusTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1011:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:951:3)
+          at /home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:853:7
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:866:11)
+          at _runTestsForDescribeBlock (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:861:11)
+          at run (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:765:3)
+          at runAndTransformResultsToJestFormat (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/jestAdapterInit.js:1993:21)
+          at jestAdapter (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-circus/build/runner.js:111:19)
+          at runTestInternal (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:276:16)
+          at runTest (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:344:7)
+          at Object.worker (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/jest-runner/build/testWorker.js:498:12)
+
+      41 |
+      42 |     workerInstance.on('failed', (job, err) => {
+    > 43 |         console.error(`Job ${job?.id} failed after ${job?.attemptsMade} attempts:`, err);
+         |                 ^
+      44 |     });
+      45 |
+      46 |     console.log('Message worker started');
+
+      at src/workers/message.worker.ts:43:17
+      at Object.<anonymous> (src/__tests__/message.worker.test.ts:76:9)
+
+    console.log
+      Message worker started
+
+      at startWorker (src/workers/message.worker.ts:46:13)
+
+    console.log
+      Job job-3 completed
+
+      at src/workers/message.worker.ts:39:17
+
+PASS src/__tests__/encryption.util.test.ts
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS src/__tests__/locale.service.test.ts
+PASS src/__tests__/rateLimiter.test.ts
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+    console.error
+      express-rate-limit: async error during store initialization. TypeError: unexpected reply from redis client
+          at RedisStore.loadIncrementScript (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/rate-limit-redis/dist/index.cjs:106:13)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at async Promise.all (index 0)
+          at RedisStore.init (/home/femi-john/Documents/Grant/Kolo-Backend/node_modules/rate-limit-redis/dist/index.cjs:168:5)
+
+      at Object.error (node_modules/express-rate-limit/dist/index.cjs:210:13)
+      at node_modules/express-rate-limit/dist/index.cjs:869:36
+
+PASS src/__tests__/bot.controller.test.ts
+  ● Console
+
+    console.log
+      WEBHOOK_VERIFIED
+
+      at BotController.verifyWebhook (src/controllers/bot.controller.ts:13:25)
+
+    console.log
+      Received message
+
+      at BotController.handleMessage (src/controllers/bot.controller.ts:38:29)
+
+PASS src/__tests__/message.queue.test.ts
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS src/__tests__/group.service.test.ts
+
+Test Suites: 1 failed, 9 passed, 10 total
+Tests:       1 failed, 104 passed, 105 total
+Snapshots:   0 total
+Time:        27.368 s, estimated 39 s
+Ran all test suites.

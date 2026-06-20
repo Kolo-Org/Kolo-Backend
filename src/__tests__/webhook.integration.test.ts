@@ -5,81 +5,87 @@ import botRoutes from '../routes/bot.routes';
 import { config } from '../config/env';
 
 jest.mock('../queue/message.queue', () => ({
-    enqueueMessage: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
+  enqueueMessage: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
 }));
 
 const app = express();
 
-app.use(express.json({
+app.use(
+  express.json({
     verify: (req: any, res, buf) => {
-        req.rawBody = buf;
-    }
-}));
+      req.rawBody = buf;
+    },
+  }),
+);
 
 app.use('/api', botRoutes);
 
 describe('Webhook Integration', () => {
-    const testSecret = 'integration_secret';
-    let originalSecret: string;
+  const testSecret = 'integration_secret';
+  let originalSecret: string;
 
-    beforeAll(() => {
-        originalSecret = config.WHATSAPP_APP_SECRET;
-        config.WHATSAPP_APP_SECRET = testSecret;
-    });
+  beforeAll(() => {
+    originalSecret = config.WHATSAPP_APP_SECRET;
+    config.WHATSAPP_APP_SECRET = testSecret;
+  });
 
-    afterAll(() => {
-        config.WHATSAPP_APP_SECRET = originalSecret;
-    });
+  afterAll(() => {
+    config.WHATSAPP_APP_SECRET = originalSecret;
+  });
 
-    it('should reject requests without a signature', async () => {
-        const payload = { object: 'whatsapp_business_account' };
+  it('should reject requests without a signature', async () => {
+    const payload = { object: 'whatsapp_business_account' };
 
-        const response = await request(app)
-            .post('/api/webhook')
-            .send(payload);
+    const response = await request(app).post('/api/webhook').send(payload);
 
-        expect(response.status).toBe(401);
-        expect(response.body.error).toBe('Missing signature');
-    });
+    expect(response.status).toBe(401);
+    expect(response.body.error).toBe('Missing signature');
+  });
 
-    it('should reject requests with an invalid signature', async () => {
-        const payload = { object: 'whatsapp_business_account' };
-        const rawBody = Buffer.from(JSON.stringify(payload), 'utf8');
-        const wrongHash = crypto.createHmac('sha256', 'wrong_secret').update(rawBody).digest('hex');
+  it('should reject requests with an invalid signature', async () => {
+    const payload = { object: 'whatsapp_business_account' };
+    const rawBody = Buffer.from(JSON.stringify(payload), 'utf8');
+    const wrongHash = crypto.createHmac('sha256', 'wrong_secret').update(rawBody).digest('hex');
 
-        const response = await request(app)
-            .post('/api/webhook')
-            .set('x-hub-signature-256', `sha256=${wrongHash}`)
-            .send(payload);
+    const response = await request(app)
+      .post('/api/webhook')
+      .set('x-hub-signature-256', `sha256=${wrongHash}`)
+      .send(payload);
 
-        expect(response.status).toBe(401);
-        expect(response.body.error).toBe('Invalid signature');
-    });
+    expect(response.status).toBe(401);
+    expect(response.body.error).toBe('Invalid signature');
+  });
 
-    it('should accept requests with a valid signature', async () => {
-        const payload = {
-            object: 'whatsapp_business_account',
-            entry: [{
-                changes: [{
-                    value: {
-                        messages: [{
-                            from: '12345',
-                            text: { body: 'SEND 10 @jane' }
-                        }]
-                    }
-                }]
-            }]
-        };
-        const rawBody = Buffer.from(JSON.stringify(payload), 'utf8');
-        const validHash = crypto.createHmac('sha256', testSecret).update(rawBody).digest('hex');
+  it('should accept requests with a valid signature', async () => {
+    const payload = {
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                messages: [
+                  {
+                    from: '12345',
+                    text: { body: 'SEND 10 @jane' },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const rawBody = Buffer.from(JSON.stringify(payload), 'utf8');
+    const validHash = crypto.createHmac('sha256', testSecret).update(rawBody).digest('hex');
 
-        const response = await request(app)
-            .post('/api/webhook')
-            .set('x-hub-signature-256', `sha256=${validHash}`)
-            .set('Content-Type', 'application/json')
-            // Sending the buffer ensures supertest uses the exact bytes for the request body
-            .send(rawBody);
+    const response = await request(app)
+      .post('/api/webhook')
+      .set('x-hub-signature-256', `sha256=${validHash}`)
+      .set('Content-Type', 'application/json')
+      // Sending the buffer ensures supertest uses the exact bytes for the request body
+      .send(rawBody);
 
-        expect(response.status).toBe(200);
-    });
+    expect(response.status).toBe(200);
+  });
 });
