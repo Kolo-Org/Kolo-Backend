@@ -9,11 +9,13 @@ if (!config.ENCRYPTION_KEY) {
 
 const app = express();
 
-app.use(express.json({
+app.use(
+  express.json({
     verify: (req: any, res, buf) => {
-        req.rawBody = buf;
-    }
-}));
+      req.rawBody = buf;
+    },
+  }),
+);
 
 app.use('/api', botRoutes);
 
