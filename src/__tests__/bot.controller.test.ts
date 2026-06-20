@@ -117,4 +117,63 @@ describe('BotController', () => {
             expect(mockEnqueueMessage).toHaveBeenCalledTimes(1);
         });
     });
+
+    describe('handleMessage - reliability edge cases', () => {
+        // Malformed/hostile payloads that must never throw (the old guard chain
+        // crashed on several of these, surfacing as an unhandled rejection).
+        const malformedPayloads: Array<[string, any]> = [
+            ['empty entry array', { object: 'x', entry: [] }],
+            ['entry with empty object', { object: 'x', entry: [{}] }],
+            ['empty changes array', { object: 'x', entry: [{ changes: [] }] }],
+            ['change without value', { object: 'x', entry: [{ changes: [{}] }] }],
+            ['null entry', { object: 'x', entry: null }],
+            ['undefined body', undefined],
+            ['messages is not an array', { object: 'x', entry: [{ changes: [{ value: { messages: 'oops' } }] }] }],
+            ['message missing from', { object: 'x', entry: [{ changes: [{ value: { messages: [{ text: { body: 'hi' } }] } }] }] }],
+            ['message missing text', { object: 'x', entry: [{ changes: [{ value: { messages: [{ from: '123' }] } }] }] }],
+        ];
+
+        it.each(malformedPayloads)(
+            'acknowledges (200) without throwing or enqueuing for %s',
+            async (_label, body) => {
+                mockReq = { body };
+                await expect(
+                    botController.handleMessage(mockReq as Request, mockRes as Response),
+                ).resolves.toBeUndefined();
+
+                // undefined body has no `object`, so it is a 404; every other
+                // malformed-but-structured payload is a benign 200 ack.
+                const expectedStatus = body && body.object ? 200 : 404;
+                expect(mockRes.sendStatus).toHaveBeenCalledWith(expectedStatus);
+                expect(mockEnqueueMessage).not.toHaveBeenCalled();
+            },
+        );
+
+        it('returns 500 when enqueue fails so WhatsApp retries delivery', async () => {
+            mockEnqueueMessage.mockRejectedValueOnce(new Error('redis down'));
+            mockReq = { body: createWebhookPayload('SEND 5 @ada') };
+
+            await botController.handleMessage(mockReq as Request, mockRes as Response);
+
+            expect(mockEnqueueMessage).toHaveBeenCalledTimes(1);
+            expect(mockRes.sendStatus).toHaveBeenCalledWith(500);
+        });
+
+        it('returns 500 when enqueue exceeds the timeout', async () => {
+            jest.useFakeTimers();
+            try {
+                // Simulate a hung queue connection that never settles.
+                mockEnqueueMessage.mockReturnValueOnce(new Promise(() => {}));
+                mockReq = { body: createWebhookPayload('HISTORY') };
+
+                const pending = botController.handleMessage(mockReq as Request, mockRes as Response);
+                await jest.advanceTimersByTimeAsync(10_000);
+                await pending;
+
+                expect(mockRes.sendStatus).toHaveBeenCalledWith(500);
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+    });
 });
