@@ -1,52 +1,62 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 export class GroupService {
-    public async createGroup(userId: string, name: string, amount: string | Prisma.Decimal, frequency: string) {
-        return await prisma.savingsGroup.create({
-            data: {
-                name,
-                contributionAmount: amount,
-                contributionFrequency: frequency,
-                members: {
-                    create: {
-                        userId: userId,
-                        role: 'CREATOR'
-                    }
-                }
-            }
-        });
-    }
+  public async createGroup(
+    userId: string,
+    name: string,
+    amount: string | Prisma.Decimal,
+    frequency: string,
+  ) {
+    return await prisma.savingsGroup.create({
+      data: {
+        name,
+        contributionAmount: amount,
+        contributionFrequency: frequency,
+        members: {
+          create: {
+            userId: userId,
+            role: 'CREATOR',
+          },
+        },
+      },
+    });
+  }
 
-    public async joinGroup(userId: string, groupId: string) {
-        return await prisma.groupMember.create({
-            data: {
-                userId,
-                groupId,
-                role: 'MEMBER'
-            }
-        });
-    }
+  public async joinGroup(userId: string, groupId: string) {
+    return await prisma.groupMember.create({
+      data: {
+        userId,
+        groupId,
+        role: 'MEMBER',
+      },
+    });
+  }
 
-    public async getGroupStatus(userId: string) {
-        return await prisma.groupMember.findMany({
-            where: { userId },
-            include: {
-                group: {
-                    include: { members: { include: { user: true } } }
-                }
-            }
-        });
-    }
+  public async getGroupStatus(userId: string) {
+    return await prisma.groupMember.findMany({
+      where: { userId },
+      include: {
+        group: {
+          include: { members: { include: { user: true } } },
+        },
+      },
+    });
+  }
 
-    public async addContribution(userId: string, groupId: string, amount: string | Prisma.Decimal, txHash: string) {
-        return await prisma.contribution.create({
-            data: {
-                userId,
-                groupId,
-                amount,
-                transactionHash: txHash,
-                status: 'COMPLETED'
-            }
-        });
-    }
+  public async addContribution(
+    userId: string,
+    groupId: string,
+    amount: string | Prisma.Decimal,
+    txHash: string,
+  ) {
+    return await prisma.contribution.create({
+      data: {
+        userId,
+        groupId,
+        amount,
+        transactionHash: txHash,
+        status: 'COMPLETED',
+      },
+    });
+  }
 }

@@ -33,18 +33,21 @@
     "rate-limit-redis": "^5.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.9.3",
     "@typescript-eslint/eslint-plugin": "^8.61.1",
     "@typescript-eslint/parser": "^8.61.1",
     "eslint": "^10.5.0",
+    "globals": "^17.6.0",
     "jest": "^30.4.2",
     "jest-mock-extended": "^4.0.1",
     "prettier": "^3.8.4",
     "prisma": "^5.11.0",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
   }
 }
