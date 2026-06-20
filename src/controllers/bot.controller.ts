@@ -1,6 +1,13 @@
 import type { Request, Response } from 'express';
 import { config } from '../config/env';
-import { enqueueMessage } from '../queue/message.queue';
+import { enqueueMessage, type MessageJobData } from '../queue/message.queue';
+
+/**
+ * Hard upper bound on how long we wait for a message to be enqueued before
+ * giving up. Without this, a hung Redis/BullMQ connection would keep the
+ * webhook request (and the WhatsApp delivery) open indefinitely.
+ */
+const ENQUEUE_TIMEOUT_MS = 10_000;
 
 /**
  * Strict typing for the subset of the WhatsApp Cloud API webhook payload that
@@ -90,12 +97,46 @@ export class BotController {
 
         console.log('Received message');
 
-        await enqueueMessage({
-            from: message.from,
-            msgBody: message.msgBody,
-            messageTimestamp: Date.now(),
-        });
+        try {
+            await this.enqueueWithTimeout({
+                from: message.from,
+                msgBody: message.msgBody,
+                messageTimestamp: Date.now(),
+            });
+        } catch (err) {
+            // Never let a queue/Redis failure surface as an unhandled promise
+            // rejection. Returning 500 makes WhatsApp retry delivery rather
+            // than silently dropping the message — important for a financial
+            // app where a lost message can mean a lost transaction.
+            console.error('Failed to enqueue webhook message:', err);
+            res.sendStatus(500);
+            return;
+        }
 
         res.sendStatus(200);
+    }
+
+    /**
+     * Enqueue a message with a hard timeout so a stalled queue connection can
+     * never hang the webhook. Resolves once the job is queued; rejects on
+     * enqueue error or when ENQUEUE_TIMEOUT_MS elapses. The timer is always
+     * cleared so it cannot keep the event loop alive.
+     */
+    private async enqueueWithTimeout(data: MessageJobData): Promise<void> {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeout = new Promise<never>((_, reject) => {
+            timer = setTimeout(
+                () => reject(new Error(`enqueueMessage timed out after ${ENQUEUE_TIMEOUT_MS}ms`)),
+                ENQUEUE_TIMEOUT_MS,
+            );
+        });
+
+        try {
+            await Promise.race([enqueueMessage(data), timeout]);
+        } finally {
+            if (timer) {
+                clearTimeout(timer);
+            }
+        }
     }
 }
