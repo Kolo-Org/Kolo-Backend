@@ -29,6 +29,7 @@ export const verifySignature = (
     .digest('hex')}`;
 
   if (signature.length !== expectedSignature.length) {
+    console.log('LENGTH MISMATCH:', { signature, expectedSignature, sigLen: signature.length, expLen: expectedSignature.length, isArray: Array.isArray(signature) });
     res.status(401).json({ error: 'Invalid signature length' });
     return;
   }

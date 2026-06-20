@@ -1,13 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
 import { webhookRateLimiter, customKeyGenerator } from '../middleware/rateLimiter';
 
-jest.mock('ioredis', () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-      call: jest.fn(),
-      on: jest.fn(),
-    };
-  });
+jest.mock('rate-limit-redis', () => {
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(() => {
+      return {
+        init: jest.fn(),
+        increment: jest.fn().mockResolvedValue({ totalHits: 1, resetTime: new Date() }),
+        decrement: jest.fn(),
+        resetKey: jest.fn(),
+      };
+    }),
+  };
 });
 
 describe('Rate Limiter Middleware', () => {
