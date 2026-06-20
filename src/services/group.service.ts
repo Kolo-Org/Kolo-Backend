@@ -1,4 +1,3 @@
-import { prisma } from '../lib/prisma';
 import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -41,6 +40,13 @@ export class GroupService {
         });
     }
 
+    public async getMembersByGroup(groupId: string) {
+        return await prisma.groupMember.findMany({
+            where: { groupId },
+            include: { user: true }
+        });
+    }
+
     public async addContribution(userId: string, groupId: string, amount: string | Prisma.Decimal, txHash: string) {
         return await prisma.contribution.create({
             data: {
@@ -50,6 +56,18 @@ export class GroupService {
                 transactionHash: txHash,
                 status: 'COMPLETED'
             }
+        });
+    }
+
+    public async getContributionsByUser(userId: string) {
+        return await prisma.contribution.findMany({
+            where: { userId }
+        });
+    }
+
+    public async getContributionsByGroup(groupId: string) {
+        return await prisma.contribution.findMany({
+            where: { groupId }
         });
     }
 }

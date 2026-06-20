@@ -12,6 +12,7 @@ jest.mock('@prisma/client', () => {
         },
         contribution: {
             create: jest.fn(),
+            findMany: jest.fn(),
         }
     };
     return { PrismaClient: jest.fn(() => mPrismaClient) };
@@ -88,6 +89,37 @@ describe('GroupService', () => {
         });
     });
 
+    describe('getMembersByGroup', () => {
+        it('should return all members for a given group', async () => {
+            const mockMembers = [
+                { id: 'm1', userId: 'u1', groupId: 'g1', user: { phoneNumber: '2341234567890' } },
+                { id: 'm2', userId: 'u2', groupId: 'g1', user: { phoneNumber: '2349876543210' } },
+            ];
+            prismaClientMock.groupMember.findMany.mockResolvedValueOnce(mockMembers);
+
+            const result = await groupService.getMembersByGroup('g1');
+
+            expect(prismaClientMock.groupMember.findMany).toHaveBeenCalledWith({
+                where: { groupId: 'g1' },
+                include: { user: true }
+            });
+            expect(result).toEqual(mockMembers);
+            expect(result).toHaveLength(2);
+        });
+
+        it('should return an empty array when the group has no members', async () => {
+            prismaClientMock.groupMember.findMany.mockResolvedValueOnce([]);
+
+            const result = await groupService.getMembersByGroup('g-empty');
+
+            expect(prismaClientMock.groupMember.findMany).toHaveBeenCalledWith({
+                where: { groupId: 'g-empty' },
+                include: { user: true }
+            });
+            expect(result).toEqual([]);
+        });
+    });
+
     describe('addContribution', () => {
         it('should log a new contribution', async () => {
             const mockContribution = { id: 'c1', amount: 50 };
@@ -105,6 +137,64 @@ describe('GroupService', () => {
                 }
             });
             expect(result).toEqual(mockContribution);
+        });
+    });
+
+    describe('getContributionsByUser', () => {
+        it('should return all contributions for a given user', async () => {
+            const mockContributions = [
+                { id: 'c1', userId: 'u1', groupId: 'g1', amount: '100', status: 'COMPLETED' },
+                { id: 'c2', userId: 'u1', groupId: 'g2', amount: '200', status: 'COMPLETED' },
+            ];
+            prismaClientMock.contribution.findMany.mockResolvedValueOnce(mockContributions);
+
+            const result = await groupService.getContributionsByUser('u1');
+
+            expect(prismaClientMock.contribution.findMany).toHaveBeenCalledWith({
+                where: { userId: 'u1' }
+            });
+            expect(result).toEqual(mockContributions);
+            expect(result).toHaveLength(2);
+        });
+
+        it('should return an empty array when the user has no contributions', async () => {
+            prismaClientMock.contribution.findMany.mockResolvedValueOnce([]);
+
+            const result = await groupService.getContributionsByUser('u-new');
+
+            expect(prismaClientMock.contribution.findMany).toHaveBeenCalledWith({
+                where: { userId: 'u-new' }
+            });
+            expect(result).toEqual([]);
+        });
+    });
+
+    describe('getContributionsByGroup', () => {
+        it('should return all contributions for a given group', async () => {
+            const mockContributions = [
+                { id: 'c1', userId: 'u1', groupId: 'g1', amount: '100', status: 'COMPLETED' },
+                { id: 'c2', userId: 'u2', groupId: 'g1', amount: '100', status: 'PENDING' },
+            ];
+            prismaClientMock.contribution.findMany.mockResolvedValueOnce(mockContributions);
+
+            const result = await groupService.getContributionsByGroup('g1');
+
+            expect(prismaClientMock.contribution.findMany).toHaveBeenCalledWith({
+                where: { groupId: 'g1' }
+            });
+            expect(result).toEqual(mockContributions);
+            expect(result).toHaveLength(2);
+        });
+
+        it('should return an empty array when the group has no contributions', async () => {
+            prismaClientMock.contribution.findMany.mockResolvedValueOnce([]);
+
+            const result = await groupService.getContributionsByGroup('g-new');
+
+            expect(prismaClientMock.contribution.findMany).toHaveBeenCalledWith({
+                where: { groupId: 'g-new' }
+            });
+            expect(result).toEqual([]);
         });
     });
 });
