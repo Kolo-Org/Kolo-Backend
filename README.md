@@ -182,9 +182,66 @@ graph TD
 
 * WhatsApp Cloud API Webhooks
 
+
+## 5. Local Development Setup
+
+### Prerequisites
+
+* Node.js >= 18.x
+* PostgreSQL >= 14.x
+* Redis (for BullMQ queue)
+* npm or yarn
+
+### Installation
+
+```bash
+git clone https://github.com/Tobi-8/Kolo-Backend.git
+cd Kolo-Backend
+npm install
+```
+
+### Environment Configuration
+
+Create a `.env` file in the project root:
+
+```env
+PORT=3000
+WHATSAPP_TOKEN=your_whatsapp_token
+WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
+WHATSAPP_APP_SECRET=your_app_secret
+VERIFY_TOKEN=kolo_verify_token
+DATABASE_URL=postgresql://user:password@localhost:5432/kolo_db
+STELLAR_NETWORK=TESTNET
+REDIS_URL=redis://localhost:6379
+ENCRYPTION_KEY=your_32_byte_hex_string
+```
+
+### Database Setup
+
+```bash
+# Create PostgreSQL database
+createdb kolo_db
+
+# Run Prisma migrations
+npx prisma migrate deploy
+
+# (Optional) Seed initial data
+npx prisma db seed
+```
+
+### Running the Application
+
+```bash
+# Development
+npm run dev
+
+# Production
+npm start
+```
+
 ---
 
-## 5. MVP Scope
+## 6. MVP Scope
 
 ### User Registration
 
@@ -215,7 +272,7 @@ graph TD
 
 ---
 
-## 6. Future Enhancements
+## 7. Future Enhancements
 
 ### Financial Features
 
@@ -245,7 +302,7 @@ graph TD
 
 ---
 
-## 7. Security & Compliance
+## 8. Security & Compliance
 
 ### Security
 
@@ -274,7 +331,7 @@ When deploying wallet-generation code in production:
 
 ---
 
-## 8. Performance Considerations
+## 9. Performance Considerations
 
 * Cache frequently accessed group data
 * Optimize Soroban contract storage
@@ -291,7 +348,7 @@ When deploying wallet-generation code in production:
 
 ---
 
-## 9. Testing Plan
+## 10. Testing Plan
 
 ### Backend Testing
 
@@ -339,7 +396,7 @@ Transaction Verification
 
 ---
 
-## 10. Deployment Plan
+## 11. Deployment Plan
 
 ### Backend
 
@@ -379,7 +436,7 @@ Deploy Soroban contracts:
 
 ---
 
-## 11. Success Metrics
+## 12. Success Metrics
 
 ### User Metrics
 
@@ -407,7 +464,7 @@ Deploy Soroban contracts:
 
 ---
 
-## 12. Core User Commands
+## 13. Core User Commands
 
 ### Account
 
