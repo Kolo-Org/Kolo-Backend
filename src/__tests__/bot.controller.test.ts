@@ -11,6 +11,10 @@ jest.mock('../config/env', () => ({
     config: { VERIFY_TOKEN: 'test_token' },
 }));
 
+jest.mock('../services/observability.service', () => ({
+    observabilityService: { logInfo: jest.fn(), alertCriticalFailure: jest.fn() },
+}));
+
 describe('BotController', () => {
     let botController: BotController;
     let mockReq: Partial<Request>;
@@ -105,6 +109,17 @@ describe('BotController', () => {
             expect(mockEnqueueMessage).not.toHaveBeenCalled();
         });
 
+        it.each([
+            ['an Error', new Error('redis down')],
+            ['a string', 'redis down'],
+            ['a non-error value', { code: 500 }],
+        ])('should return 500 when enqueue rejects with %s so WhatsApp retries', async (_label, reason) => {
+            mockEnqueueMessage.mockRejectedValueOnce(reason);
+            mockReq = { body: createWebhookPayload('BALANCE') };
+            await botController.handleMessage(mockReq as Request, mockRes as Response);
+            expect(mockRes.sendStatus).toHaveBeenCalledWith(500);
+            expect(mockEnqueueMessage).toHaveBeenCalledTimes(1);
+        });
     });
 
     describe('handleMessage - reliability edge cases', () => {

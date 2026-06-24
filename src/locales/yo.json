@@ -48,9 +48,16 @@
   "contribute": {
     "usage": "Lílo: CONTRIBUTE <iye>",
     "no_group": "Aṣiṣe: Ìwọ kò jẹ́ apá ẹgbẹ́ kankan.",
+    "amount_mismatch": "❌ Ìdásọwọ gbọdọ̀ jẹ́ {{required}} XLM gẹ́gẹ́ bí ẹgbẹ́ yìí ṣe nílò.",
     "initiating": "[ÌLỌSIWÁJÚ] Nfilọ ìdásọwọ {{amount}} XLM sí \"{{groupName}}\"...",
     "success": "✅ Ìdásọwọ {{amount}} XLM sí \"{{groupName}}\" ti ṣeyọrí!",
     "failed": "❌ Ìdásọwọ kùnà: {{message}}"
+  },
+  "validation": {
+    "invalid_format": "❌ Ìpínsẹ iye kò tọ. Jọ̀wọ́ tẹ nọ́mbà tó dára (bí àpẹẹrẹ, 10 tabi 10.50).",
+    "zero_amount": "❌ Iye gbọdọ̀ jẹ́ jù odo lọ.",
+    "precision_exceeded": "❌ Iye kò le ní jù dígítì méje lẹ́yìn ìpẹ̀sẹ̀.",
+    "exceeds_max": "❌ Iye jù iye tó pọ̀ jùlọ tí a gbà (1,000,000 XLM)."
   },
   "withdraw": {
     "usage": "Lílo: WITHDRAW <iye>",

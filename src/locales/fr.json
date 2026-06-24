@@ -48,9 +48,16 @@
   "contribute": {
     "usage": "Utilisation : CONTRIBUTE <montant>",
     "no_group": "Erreur : Vous ne faites partie d'aucun groupe.",
+    "amount_mismatch": "❌ La cotisation doit être exactement {{required}} XLM comme l'exige ce groupe.",
     "initiating": "[COTISATION] Initiation de la cotisation de {{amount}} XLM pour \"{{groupName}}\"...",
     "success": "✅ {{amount}} XLM cotisés avec succès dans \"{{groupName}}\" !",
     "failed": "❌ Échec de la cotisation : {{message}}"
+  },
+  "validation": {
+    "invalid_format": "❌ Format de montant invalide. Veuillez entrer un nombre positif (par ex. 10 ou 10.50).",
+    "zero_amount": "❌ Le montant doit être supérieur à zéro.",
+    "precision_exceeded": "❌ Le montant ne peut pas avoir plus de 7 décimales.",
+    "exceeds_max": "❌ Le montant dépasse le maximum autorisé (1 000 000 XLM)."
   },
   "withdraw": {
     "usage": "Utilisation : WITHDRAW <montant>",

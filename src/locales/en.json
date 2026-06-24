@@ -48,9 +48,16 @@
   "contribute": {
     "usage": "Usage: CONTRIBUTE <amount>",
     "no_group": "Error: You are not part of any group.",
+    "amount_mismatch": "❌ Contribution must be exactly {{required}} XLM as required by this group.",
     "initiating": "[CONTRIBUTE] Initiating contribution of {{amount}} XLM to \"{{groupName}}\"...",
     "success": "✅ Successfully contributed {{amount}} XLM to \"{{groupName}}\"!",
     "failed": "❌ Contribution failed: {{message}}"
+  },
+  "validation": {
+    "invalid_format": "❌ Invalid amount format. Please enter a positive number (e.g., 10 or 10.50).",
+    "zero_amount": "❌ Amount must be greater than zero.",
+    "precision_exceeded": "❌ Amount cannot have more than 7 decimal places.",
+    "exceeds_max": "❌ Amount exceeds the maximum allowed (1,000,000 XLM)."
   },
   "withdraw": {
     "usage": "Usage: WITHDRAW <amount>",

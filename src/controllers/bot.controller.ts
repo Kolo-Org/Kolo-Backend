@@ -12,7 +12,9 @@ const ENQUEUE_TIMEOUT_MS = 10_000;
 
 /**
  * Minimal, defensively-typed shape of the WhatsApp Cloud API webhook payload.
- * Every field is optional because the payload is attacker-controllable.
+ * Every field is optional because the payload is attacker-controllable: the
+ * webhook is public, so we must treat the body as untrusted and never assume a
+ * field exists. We only model the slice we actually read.
  */
 interface WhatsAppTextMessage {
     from?: string;
@@ -43,21 +45,6 @@ export interface IncomingTextMessage {
     whatsappMessageId: string;
 }
 
-/**
- * Narrow an unknown caught value to a human-readable message without assuming
- * it is an `Error`. Caught values are typed `unknown` under strict mode, so a
- * type guard is required before touching `.message`.
- */
-function getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-        return error.message;
-    }
-    if (typeof error === 'string') {
-        return error;
-    }
-    return 'Unknown error';
-}
-
 export class BotController {
     public verifyWebhook(req: Request, res: Response): void {
         const mode = req.query['hub.mode'];
@@ -81,8 +68,7 @@ export class BotController {
     /**
      * Safely extract the first inbound text message from a (possibly malformed
      * or malicious) webhook body. Optional chaining is used end-to-end so a
-     * partial or garbage payload can never throw a TypeError — the previous
-     * guard chain crashed on inputs such as `{ object: 'x', entry: [] }`.
+     * partial or garbage payload can never throw a TypeError.
      * Returns null when there is no actionable text message.
      */
     private extractTextMessage(body: WhatsAppWebhookBody): IncomingTextMessage | null {
@@ -145,8 +131,6 @@ export class BotController {
      * cleared so it cannot keep the event loop alive.
      */
     private async enqueueWithTimeout(data: MessageJobData): Promise<void> {
-        // Assigned synchronously inside the Promise executor below, so it is
-        // always set by the time `finally` runs.
         let timer!: ReturnType<typeof setTimeout>;
         const timeout = new Promise<never>((_, reject) => {
             timer = setTimeout(

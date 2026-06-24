@@ -24,6 +24,7 @@ const mockResolveUser = jest.fn().mockResolvedValue({
 });
 const mockCreateGroup = jest.fn().mockResolvedValue({ id: 'g1' });
 const mockJoinGroup = jest.fn().mockResolvedValue({ id: 'gm1' });
+// Group requires 10 XLM per contribution cycle
 const mockGetGroupStatus = jest.fn().mockResolvedValue([
     { role: 'CREATOR', groupId: 'g1', group: { id: 'g1', name: 'G1', contributionAmount: 10, contributionFrequency: 'MONTHLY', members: [] } },
 ]);
@@ -59,7 +60,7 @@ describe('MessageProcessor', () => {
 
         it('should handle PROFILE command', async () => {
             await processor.processCommand('12345', 'PROFILE');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('*Kolo Profile*'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('profile.card'));
         });
 
         it('should handle HISTORY command', async () => {
@@ -110,9 +111,25 @@ describe('MessageProcessor', () => {
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.usage'));
         });
 
+        it('should decrypt sender secret and send payment on success', async () => {
+            await processor.processCommand('12345', 'SEND 10 @jane');
+
+            expect(mockGetOrCreateUser).toHaveBeenCalledWith('12345');
+            expect(mockResolveUser).toHaveBeenCalledWith('@jane');
+            expect(mockDecrypt).toHaveBeenCalledWith('ENC_SEC', 'IV', 'TAG');
+            expect(mockSendPayment).toHaveBeenCalledWith('S_SEC', 'G_PUB2', '10');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.initiating'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.success'));
+        });
+
+        it('should show usage when insufficient args', async () => {
+            await processor.processCommand('12345', 'SEND 10');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.usage'));
+        });
+
         it('should validate amount format', async () => {
             await processor.processCommand('12345', 'SEND abc @jane');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Invalid amount'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.invalid_format'));
         });
 
         it('should check if sender has a wallet', async () => {
@@ -125,13 +142,6 @@ describe('MessageProcessor', () => {
             mockResolveUser.mockResolvedValueOnce(null);
             await processor.processCommand('12345', 'SEND 10 @jane');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.no_recipient'));
-        });
-
-        it('should decrypt sender secret and send payment on success', async () => {
-            await processor.processCommand('12345', 'SEND 10 @jane');
-            expect(mockDecrypt).toHaveBeenCalledWith('ENC_SEC', 'IV', 'TAG');
-            expect(mockSendPayment).toHaveBeenCalledWith('S_SEC', 'G_PUB2', '10');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.success'));
         });
 
         it('should handle missing recipient wallet', async () => {
@@ -158,9 +168,10 @@ describe('MessageProcessor', () => {
     });
 
     describe('handleContribute', () => {
-        it('should record contribution and notify on success', async () => {
-            await processor.processCommand('12345', 'CONTRIBUTE 50');
-            expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '50', expect.stringContaining('mock_tx_'));
+        it('should record contribution and notify on success when amount matches group requirement', async () => {
+            // Group requires 10 XLM (see mockGetGroupStatus above)
+            await processor.processCommand('12345', 'CONTRIBUTE 10');
+            expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '10', expect.stringContaining('mock_tx_'));
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.success'));
         });
 
@@ -172,15 +183,107 @@ describe('MessageProcessor', () => {
 
         it('should handle missing group membership', async () => {
             mockGetGroupStatus.mockResolvedValueOnce([]);
-            await processor.processCommand('12345', 'CONTRIBUTE 50');
+            await processor.processCommand('12345', 'CONTRIBUTE 10');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.no_group'));
             expect(mockAddContribution).not.toHaveBeenCalled();
         });
 
         it('should handle contribution failure', async () => {
             mockAddContribution.mockRejectedValueOnce(new Error('Group not found'));
-            await processor.processCommand('12345', 'CONTRIBUTE 50');
+            await processor.processCommand('12345', 'CONTRIBUTE 10');
             expect(mockSendMessage).toHaveBeenLastCalledWith('12345', expect.stringContaining('contribute.failed'));
+        });
+    });
+
+    describe('handleContribute amount validation', () => {
+        it('should reject a non-numeric amount', async () => {
+            await processor.processCommand('12345', 'CONTRIBUTE abc');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.invalid_format'));
+            expect(mockAddContribution).not.toHaveBeenCalled();
+        });
+
+        it('should reject zero amount', async () => {
+            await processor.processCommand('12345', 'CONTRIBUTE 0');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.zero_amount'));
+            expect(mockAddContribution).not.toHaveBeenCalled();
+        });
+
+        it('should reject a negative amount', async () => {
+            await processor.processCommand('12345', 'CONTRIBUTE -5');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.invalid_format'));
+            expect(mockAddContribution).not.toHaveBeenCalled();
+        });
+
+        it('should reject amount with more than 7 decimal places', async () => {
+            await processor.processCommand('12345', 'CONTRIBUTE 10.12345678');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.precision_exceeded'));
+            expect(mockAddContribution).not.toHaveBeenCalled();
+        });
+
+        it('should reject amount exceeding 1,000,000 XLM', async () => {
+            await processor.processCommand('12345', 'CONTRIBUTE 1000001');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.exceeds_max'));
+            expect(mockAddContribution).not.toHaveBeenCalled();
+        });
+
+        it('should reject amount that does not match the group required contribution', async () => {
+            // Group requires 10 XLM; user tries to contribute a different amount
+            await processor.processCommand('12345', 'CONTRIBUTE 50');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.amount_mismatch'));
+            expect(mockAddContribution).not.toHaveBeenCalled();
+        });
+
+        it('should accept a valid amount that exactly matches group requirement', async () => {
+            // Group requires 10 XLM
+            await processor.processCommand('12345', 'CONTRIBUTE 10');
+            expect(mockAddContribution).toHaveBeenCalled();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.success'));
+        });
+
+        it('should accept a valid decimal amount matching the group requirement', async () => {
+            mockGetGroupStatus.mockResolvedValueOnce([
+                { role: 'MEMBER', groupId: 'g2', group: { id: 'g2', name: 'G2', contributionAmount: 10.5, contributionFrequency: 'WEEKLY', members: [] } },
+            ]);
+            await processor.processCommand('12345', 'CONTRIBUTE 10.5');
+            expect(mockAddContribution).toHaveBeenCalled();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.success'));
+        });
+    });
+
+    describe('handleCreateGroup amount validation', () => {
+        it('should reject zero contribution amount', async () => {
+            await processor.processCommand('12345', 'CREATE GROUP Savings 0 MONTHLY');
+            expect(mockCreateGroup).not.toHaveBeenCalled();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.zero_amount'));
+        });
+
+        it('should reject non-numeric contribution amount', async () => {
+            await processor.processCommand('12345', 'CREATE GROUP Savings abc MONTHLY');
+            expect(mockCreateGroup).not.toHaveBeenCalled();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.invalid_format'));
+        });
+
+        it('should reject contribution amount with more than 7 decimal places', async () => {
+            await processor.processCommand('12345', 'CREATE GROUP Savings 5.12345678 MONTHLY');
+            expect(mockCreateGroup).not.toHaveBeenCalled();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.precision_exceeded'));
+        });
+    });
+
+    describe('handleWithdraw amount validation', () => {
+        it('should reject zero withdrawal amount', async () => {
+            await processor.processCommand('12345', 'WITHDRAW 0');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.zero_amount'));
+        });
+
+        it('should reject non-numeric withdrawal amount', async () => {
+            await processor.processCommand('12345', 'WITHDRAW abc');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.invalid_format'));
+        });
+
+        it('should reject withdrawal amount with more than 7 decimal places', async () => {
+            await processor.processCommand('12345', 'WITHDRAW 1.12345678');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.precision_exceeded'));
         });
     });
 
@@ -295,14 +398,6 @@ describe('MessageProcessor', () => {
             });
             await processor.processCommand('12345', 'BALANCE');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('balance.no_wallet'));
-        });
-    });
-
-    describe('handleContribute edge cases', () => {
-        it('should handle invalid amount gracefully', async () => {
-            await processor.processCommand('12345', 'CONTRIBUTE abc');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Invalid amount'));
-            expect(mockAddContribution).not.toHaveBeenCalled();
         });
     });
 });

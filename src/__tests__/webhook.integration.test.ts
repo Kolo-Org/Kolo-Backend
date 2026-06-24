@@ -12,6 +12,10 @@ jest.mock('../middleware/rateLimiter', () => ({
     webhookRateLimiter: (req: any, res: any, next: any) => next(),
 }));
 
+jest.mock('../services/observability.service', () => ({
+    observabilityService: { logInfo: jest.fn(), alertCriticalFailure: jest.fn() },
+}));
+
 const app = express();
 
 app.use(express.json({
@@ -69,6 +73,7 @@ describe('Webhook Integration', () => {
                     value: {
                         messages: [{
                             from: '12345',
+                            id: 'wamid.test',
                             text: { body: 'SEND 10 @jane' }
                         }]
                     }
