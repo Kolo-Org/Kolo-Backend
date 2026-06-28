@@ -371,12 +371,26 @@ export class MessageProcessor {
             );
         }
 
+        if (!user.stellarWallet) {
+            return await this.whatsappService.sendMessage(from, t('send.no_wallet', lang));
+        }
+        if (!group.stellarContractId) {
+            return await this.whatsappService.sendMessage(from, t('error.generic', lang, { message: 'Group has no receiving wallet configured.' }));
+        }
+
+        const senderWallet = JSON.parse(user.stellarWallet);
+        const senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag);
+        const recipientPublicKey = group.stellarContractId;
+
         try {
             await this.whatsappService.sendMessage(
                 from,
                 t('contribute.initiating', lang, { amount: amountStr, groupName: group.name }),
             );
-            const txHash = 'mock_tx_' + Date.now();
+            
+            const txResponse = await this.stellarService.sendPayment(senderSecret, recipientPublicKey, amountStr);
+            const txHash = txResponse.hash || ('fallback_tx_' + Date.now());
+            
             await this.groupService.addContribution(user.id, group.id, amountStr, txHash);
             await this.whatsappService.sendMessage(
                 from,

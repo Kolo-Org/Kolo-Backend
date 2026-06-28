@@ -26,7 +26,7 @@ const mockCreateGroup = jest.fn().mockResolvedValue({ id: 'g1' });
 const mockJoinGroup = jest.fn().mockResolvedValue({ id: 'gm1' });
 // Group requires 10 XLM per contribution cycle
 const mockGetGroupStatus = jest.fn().mockResolvedValue([
-    { role: 'CREATOR', groupId: 'g1', group: { id: 'g1', name: 'G1', contributionAmount: 10, contributionFrequency: 'MONTHLY', members: [] } },
+    { role: 'CREATOR', groupId: 'g1', group: { id: 'g1', name: 'G1', contributionAmount: 10, contributionFrequency: 'MONTHLY', stellarContractId: 'group_pub_key', members: [] } },
 ]);
 const mockAddContribution = jest.fn().mockResolvedValue({ id: 'c1' });
 
@@ -171,7 +171,7 @@ describe('MessageProcessor', () => {
         it('should record contribution and notify on success when amount matches group requirement', async () => {
             // Group requires 10 XLM (see mockGetGroupStatus above)
             await processor.processCommand('12345', 'CONTRIBUTE 10');
-            expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '10', expect.stringContaining('mock_tx_'));
+            expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '10', 'tx123');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.success'));
         });
 
@@ -242,7 +242,7 @@ describe('MessageProcessor', () => {
 
         it('should accept a valid decimal amount matching the group requirement', async () => {
             mockGetGroupStatus.mockResolvedValueOnce([
-                { role: 'MEMBER', groupId: 'g2', group: { id: 'g2', name: 'G2', contributionAmount: 10.5, contributionFrequency: 'WEEKLY', members: [] } },
+                { role: 'MEMBER', groupId: 'g2', group: { id: 'g2', name: 'G2', contributionAmount: 10.5, contributionFrequency: 'WEEKLY', stellarContractId: 'g2_pub_key', members: [] } },
             ]);
             await processor.processCommand('12345', 'CONTRIBUTE 10.5');
             expect(mockAddContribution).toHaveBeenCalled();
