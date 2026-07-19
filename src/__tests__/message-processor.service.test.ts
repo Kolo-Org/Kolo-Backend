@@ -10,7 +10,10 @@ jest.mock('../services/locale.service', () => ({
 }));
 
 const mockSendMessage = jest.fn().mockResolvedValue(true);
-const mockCheckBalance = jest.fn().mockResolvedValue('100.50');
+const mockCheckBalance = jest.fn().mockResolvedValue([
+    { assetCode: 'XLM', issuer: '', balance: '100.50' },
+    { assetCode: 'USDC', issuer: 'G_USDC_ISSUER', balance: '50.00' },
+]);
 const mockSendPayment = jest.fn().mockResolvedValue({ successful: true, hash: 'tx123' });
 const mockDecrypt = jest.fn().mockReturnValue('S_SEC');
 const mockGetOrCreateUser = jest.fn().mockResolvedValue({
@@ -56,6 +59,27 @@ describe('MessageProcessor', () => {
         it('should handle BALANCE command', async () => {
             await processor.processCommand('12345', 'BALANCE');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('balance.success'));
+        });
+
+        it('should list every asset balance for a bare BALANCE command', async () => {
+            await processor.processCommand('12345', 'BALANCE');
+            const [, message] = mockSendMessage.mock.calls[0];
+            expect(message).toContain('"balances":"XLM: 100.50\\nUSDC: 50.00"');
+        });
+
+        it('should filter to a single asset for BALANCE <asset>', async () => {
+            await processor.processCommand('12345', 'BALANCE USDC');
+            const [, message] = mockSendMessage.mock.calls[0];
+            expect(message).toContain('balance.success');
+            expect(message).toContain('"balances":"USDC: 50.00"');
+        });
+
+        it('should report when the requested asset has no trustline', async () => {
+            await processor.processCommand('12345', 'BALANCE EURC');
+            expect(mockSendMessage).toHaveBeenCalledWith(
+                '12345',
+                expect.stringContaining('balance.asset_not_found'),
+            );
         });
 
         it('should handle PROFILE command', async () => {
