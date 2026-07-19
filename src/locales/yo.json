@@ -72,5 +72,8 @@
   },
   "error": {
     "generic": "Aṣiṣe ṣẹlẹ: {{message}}"
+  },
+  "wallet": {
+    "usdc_trustline_low_reserve": "O nílò ó kéré tán 2 XLM nínú àpamọ́wọ́ rẹ láti mú USDC ṣiṣẹ́."
   }
 }

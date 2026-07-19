@@ -72,5 +72,8 @@
   },
   "error": {
     "generic": "Une erreur s'est produite : {{message}}"
+  },
+  "wallet": {
+    "usdc_trustline_low_reserve": "Vous avez besoin d'au moins 2 XLM dans votre portefeuille pour activer l'USDC."
   }
 }

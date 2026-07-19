@@ -72,5 +72,8 @@
   },
   "error": {
     "generic": "An error occurred: {{message}}"
+  },
+  "wallet": {
+    "usdc_trustline_low_reserve": "You need at least 2 XLM in your wallet to enable USDC."
   }
 }

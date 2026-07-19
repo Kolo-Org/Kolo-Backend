@@ -1,7 +1,12 @@
 import { prisma } from '../lib/prisma';
-import { StellarService } from './stellar.service';
+import { StellarService, InsufficientReserveError } from './stellar.service';
+import { WhatsAppService } from './whatsapp.service';
+import { decrypt } from '../utils/encryption.util';
+import { config } from '../config/env';
+import { t } from './locale.service';
 
 const stellarService = new StellarService();
+const whatsappService = new WhatsAppService();
 
 export class UserService {
     public async getOrCreateUser(phoneNumber: string): Promise<any> {
@@ -16,6 +21,19 @@ export class UserService {
                 await stellarService.fundTestnetAccount(wallet.publicKey);
             } catch (err) {
                 console.error('Failed to fund testnet account:', err);
+            }
+
+            if (config.USDC_ISSUER_PUBLIC_KEY) {
+                try {
+                    const secret = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
+                    await stellarService.createTrustline(secret, 'USDC', config.USDC_ISSUER_PUBLIC_KEY);
+                } catch (err) {
+                    if (err instanceof InsufficientReserveError) {
+                        await whatsappService.sendMessage(phoneNumber, t('wallet.usdc_trustline_low_reserve', 'en'));
+                    } else {
+                        console.error('Failed to create USDC trustline:', err);
+                    }
+                }
             }
 
             const walletData = JSON.stringify({
