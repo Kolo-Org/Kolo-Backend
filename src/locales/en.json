@@ -1,7 +1,8 @@
 {
   "balance": {
     "no_wallet": "[BALANCE] Error: Wallet not configured.",
-    "success": "[BALANCE] Your balance is {{balance}} XLM."
+    "success": "💰 Your Balances:\n{{balances}}",
+    "asset_not_found": "You don't have a trustline for {{asset}}."
   },
   "history": {
     "fetching": "[HISTORY] Fetching transaction history for {{phone}}..."
@@ -65,7 +66,7 @@
     "success": "✅ Successfully withdrew {{amount}} XLM from \"{{groupName}}\" pool! (MOCKED)"
   },
   "help": {
-    "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Support_\nHELP\nSUPPORT"
+    "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Support_\nHELP\nSUPPORT"
   },
   "unknown": {
     "command": "I didn't understand that command. Send HELP to see available commands."

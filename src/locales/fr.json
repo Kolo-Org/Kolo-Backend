@@ -1,7 +1,8 @@
 {
   "balance": {
     "no_wallet": "[SOLDE] Erreur : Portefeuille non configuré.",
-    "success": "[SOLDE] Votre solde est de {{balance}} XLM."
+    "success": "💰 Vos Soldes :\n{{balances}}",
+    "asset_not_found": "Vous n'avez pas de trustline pour {{asset}}."
   },
   "history": {
     "fetching": "[HISTORIQUE] Récupération de l'historique des transactions pour {{phone}}..."
@@ -65,7 +66,7 @@
     "success": "✅ {{amount}} XLM retirés avec succès du pool \"{{groupName}}\" ! (SIMULÉ)"
   },
   "help": {
-    "text": "*Commandes Kolo :*\n\n_Compte_\nBALANCE\nHISTORY\nPROFILE\n\n_Paiements_\nSEND <montant> <@utilisateur>\nREQUEST <montant> <@utilisateur>\n\n_Groupes d'épargne_\nCREATE GROUP <nom> <montant> <fréquence>\nJOIN GROUP <groupId>\nINVITE MEMBER <@utilisateur>\nGROUP STATUS\nCONTRIBUTE <montant>\nWITHDRAW <montant>\n\n_Assistance_\nHELP\nSUPPORT"
+    "text": "*Commandes Kolo :*\n\n_Compte_\nBALANCE\nBALANCE <actif>\nHISTORY\nPROFILE\n\n_Paiements_\nSEND <montant> <@utilisateur>\nREQUEST <montant> <@utilisateur>\n\n_Groupes d'épargne_\nCREATE GROUP <nom> <montant> <fréquence>\nJOIN GROUP <groupId>\nINVITE MEMBER <@utilisateur>\nGROUP STATUS\nCONTRIBUTE <montant>\nWITHDRAW <montant>\n\n_Assistance_\nHELP\nSUPPORT"
   },
   "unknown": {
     "command": "Je n'ai pas compris cette commande. Envoyez HELP pour voir les commandes disponibles."

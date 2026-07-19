@@ -1,7 +1,8 @@
 {
   "balance": {
     "no_wallet": "[IWO OWO] Aṣiṣe: Apamọwọ ko ti ṣeto.",
-    "success": "[IWO OWO] Iye owó rẹ jẹ {{balance}} XLM."
+    "success": "💰 Iye Owó Rẹ:\n{{balances}}",
+    "asset_not_found": "O kò ní trustline fún {{asset}}."
   },
   "history": {
     "fetching": "[ITAN] Nfetí itan ìṣòwò fún {{phone}}..."
@@ -65,7 +66,7 @@
     "success": "✅ Yíyọ {{amount}} XLM kúrò nínú \"{{groupName}}\" ti ṣeyọrí! (ADANWÒ)"
   },
   "help": {
-    "text": "*Àwọn Àṣẹ Kolo:*\n\n_Àkọọlẹ_\nBALANCE\nHISTORY\nPROFILE\n\n_Àwọn Ìsanwó_\nSEND <iye> <@olùmúlò>\nREQUEST <iye> <@olùmúlò>\n\n_Àwọn Ẹgbẹ́ Ìfowópamọ́_\nCREATE GROUP <orúkọ> <iye> <ìgbà>\nJOIN GROUP <groupId>\nINVITE MEMBER <@olùmúlò>\nGROUP STATUS\nCONTRIBUTE <iye>\nWITHDRAW <iye>\n\n_Ìrànlọ́wọ́_\nHELP\nSUPPORT"
+    "text": "*Àwọn Àṣẹ Kolo:*\n\n_Àkọọlẹ_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Àwọn Ìsanwó_\nSEND <iye> <@olùmúlò>\nREQUEST <iye> <@olùmúlò>\n\n_Àwọn Ẹgbẹ́ Ìfowópamọ́_\nCREATE GROUP <orúkọ> <iye> <ìgbà>\nJOIN GROUP <groupId>\nINVITE MEMBER <@olùmúlò>\nGROUP STATUS\nCONTRIBUTE <iye>\nWITHDRAW <iye>\n\n_Ìrànlọ́wọ́_\nHELP\nSUPPORT"
   },
   "unknown": {
     "command": "미 ko gbọ́ àṣẹ yẹn. Firanṣẹ HELP láti rí àwọn àṣẹ tó wà."
