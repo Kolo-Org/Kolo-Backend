@@ -1,10 +1,6 @@
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
-import Redis from 'ioredis';
-import { config } from '../config/env';
-
-// Initialize Redis client using the existing configuration
-const redisClient = new Redis(config.REDIS_URL);
+import { redisClient } from '../lib/redis';
 
 export const customKeyGenerator = (req: any): string => {
     // Attempt to extract the WhatsApp sender's phone number

@@ -10,6 +10,20 @@ const mServer = {
     submitTransaction: jest.fn().mockResolvedValue({ successful: true, hash: 'mock_tx_hash' })
 };
 
+jest.mock('../lib/redis', () => ({
+    redisClient: {
+        get: jest.fn(),
+        set: jest.fn(),
+        del: jest.fn(),
+        keys: jest.fn().mockResolvedValue([])
+    }
+}));
+const { redisClient } = require('../lib/redis');
+const mockRedisGet = redisClient.get as jest.Mock;
+const mockRedisSet = redisClient.set as jest.Mock;
+const mockRedisDel = redisClient.del as jest.Mock;
+const mockRedisKeys = redisClient.keys as jest.Mock;
+
 jest.mock('@stellar/stellar-sdk', () => {
     const originalModule = jest.requireActual('@stellar/stellar-sdk');
 
@@ -60,6 +74,7 @@ describe('StellarService', () => {
         jest.clearAllMocks();
         config.STELLAR_NETWORK = originalNetwork;
         stellarService = new StellarService();
+        mockRedisKeys.mockResolvedValue([]);
     });
 
     describe('generateWallet', () => {
@@ -166,6 +181,66 @@ describe('StellarService', () => {
                     networkPassphrase: StellarSdk.Networks.PUBLIC,
                 }),
             );
+        });
+
+        it('should invalidate redis cache after sendPayment', async () => {
+            mockRedisKeys.mockResolvedValue(['tx_history:G_MOCK:page:1']);
+            const validPublicKey = 'GBBM6BKZPEHWPI3VK3VNKEJEXTMIGNNCE2ZEXSVEEKSJNDYTK2E4QUDE';
+            await stellarService.sendPayment('S_MOCK', validPublicKey, '10.0');
+            expect(mockRedisDel).toHaveBeenCalledWith('tx_history:G_MOCK:page:1');
+        });
+    });
+
+    describe('getTransactionHistory', () => {
+        const mockOpCall = jest.fn();
+        const mockTxCall = jest.fn();
+        const mockCursor = jest.fn().mockReturnThis();
+        const mockLimit = jest.fn().mockReturnThis();
+        const mockOrder = jest.fn().mockReturnThis();
+        const mockForAccount = jest.fn().mockReturnThis();
+
+        beforeAll(() => {
+            (mServer as any).transactions = jest.fn().mockReturnValue({
+                forAccount: mockForAccount,
+                order: mockOrder,
+                limit: mockLimit,
+                cursor: mockCursor,
+                call: mockTxCall
+            });
+        });
+
+        it('should return cached result if available', async () => {
+            mockRedisGet.mockResolvedValue(JSON.stringify({ transactions: [], nextCursor: null }));
+            const result = await stellarService.getTransactionHistory('G_MOCK');
+            expect(result.transactions).toEqual([]);
+            expect(mockTxCall).not.toHaveBeenCalled();
+        });
+
+        it('should fetch from horizon if not cached and cache the result', async () => {
+            mockRedisGet.mockResolvedValue(null);
+            mockTxCall.mockResolvedValue({
+                records: [{
+                    id: 'tx1',
+                    created_at: '2026-06-25T00:00:00Z',
+                    hash: 'HASH123',
+                    operations: jest.fn().mockResolvedValue({
+                        records: [{ type: 'payment', amount: '10.0', asset_type: 'native', from: 'G_OTHER', to: 'G_MOCK' }]
+                    })
+                }]
+            });
+            const result = await stellarService.getTransactionHistory('G_MOCK');
+            expect(result.transactions.length).toBe(1);
+            expect(result.transactions[0].type).toBe('payment received');
+            expect(result.transactions[0].amount).toBe('10.0');
+            expect(result.transactions[0].asset).toBe('XLM');
+            expect(result.transactions[0].counterparty).toBe('G_OTHER');
+            expect(mockRedisSet).toHaveBeenCalledWith('tx_history:G_MOCK:page:1', expect.any(String), 'EX', 300);
+        });
+
+        it('should return 404 formatted error if wallet not funded', async () => {
+            mockRedisGet.mockResolvedValue(null);
+            mockTxCall.mockRejectedValue({ response: { status: 404 } });
+            await expect(stellarService.getTransactionHistory('G_MOCK')).rejects.toThrow(/funded yet/);
         });
     });
 });
