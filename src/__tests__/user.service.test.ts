@@ -5,10 +5,22 @@ import { WhatsAppService } from '../services/whatsapp.service';
 import { config } from '../config/env';
 
 // Mock the modules
+jest.mock('../lib/redis', () => ({
+    redisClient: {
+        get: jest.fn(),
+        set: jest.fn(),
+        del: jest.fn()
+    }
+}));
+const { redisClient } = require('../lib/redis');
+const mockRedisGet = redisClient.get as jest.Mock;
+const mockRedisSet = redisClient.set as jest.Mock;
+
 jest.mock('@prisma/client', () => {
     const mPrismaClient = {
         user: {
             findUnique: jest.fn(),
+            findFirst: jest.fn(),
             create: jest.fn(),
         },
     };
@@ -188,6 +200,84 @@ describe('UserService', () => {
             expect(prismaClientMock.user.findUnique).toHaveBeenCalledWith({
                 where: { phoneNumber: '123' }
             });
+        });
+    });
+
+    describe('getUserByPublicKey', () => {
+        const mockPublicKey = 'G_MOCK_PUBLIC_KEY';
+        const cacheKey = `address_to_username:${mockPublicKey}`;
+        const mockUser = { username: 'testuser', phoneNumber: '1234567890' };
+
+        it('should return cached user on cache hit', async () => {
+            mockRedisGet.mockResolvedValueOnce(JSON.stringify(mockUser));
+
+            const result = await userService.getUserByPublicKey(mockPublicKey);
+
+            expect(mockRedisGet).toHaveBeenCalledWith(cacheKey);
+            expect(prismaClientMock.user.findFirst).not.toHaveBeenCalled();
+            expect(result).toEqual(mockUser);
+        });
+
+        it('should fetch from Prisma and cache the result on cache miss', async () => {
+            mockRedisGet.mockResolvedValueOnce(null);
+            prismaClientMock.user.findFirst.mockResolvedValueOnce(mockUser);
+
+            const result = await userService.getUserByPublicKey(mockPublicKey);
+
+            expect(mockRedisGet).toHaveBeenCalledWith(cacheKey);
+            expect(prismaClientMock.user.findFirst).toHaveBeenCalledWith({
+                where: { stellarWallet: { contains: mockPublicKey } },
+                select: { username: true, phoneNumber: true }
+            });
+            expect(mockRedisSet).toHaveBeenCalledWith(cacheKey, JSON.stringify(mockUser), 'EX', 3600);
+            expect(result).toEqual(mockUser);
+        });
+
+        it('should gracefully handle Redis get failure and still fetch from Prisma', async () => {
+            mockRedisGet.mockRejectedValueOnce(new Error('Redis connection error'));
+            prismaClientMock.user.findFirst.mockResolvedValueOnce(mockUser);
+            
+            // Suppress console.error for this test
+            const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+            const result = await userService.getUserByPublicKey(mockPublicKey);
+
+            expect(mockRedisGet).toHaveBeenCalledWith(cacheKey);
+            expect(prismaClientMock.user.findFirst).toHaveBeenCalled();
+            expect(mockRedisSet).toHaveBeenCalledWith(cacheKey, JSON.stringify(mockUser), 'EX', 3600);
+            expect(result).toEqual(mockUser);
+
+            consoleSpy.mockRestore();
+        });
+
+        it('should gracefully handle Redis set failure after fetching from Prisma', async () => {
+            mockRedisGet.mockResolvedValueOnce(null);
+            prismaClientMock.user.findFirst.mockResolvedValueOnce(mockUser);
+            mockRedisSet.mockRejectedValueOnce(new Error('Redis connection error'));
+            
+            // Suppress console.error for this test
+            const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+            const result = await userService.getUserByPublicKey(mockPublicKey);
+
+            expect(mockRedisGet).toHaveBeenCalledWith(cacheKey);
+            expect(prismaClientMock.user.findFirst).toHaveBeenCalled();
+            expect(mockRedisSet).toHaveBeenCalledWith(cacheKey, JSON.stringify(mockUser), 'EX', 3600);
+            expect(result).toEqual(mockUser);
+
+            consoleSpy.mockRestore();
+        });
+        
+        it('should return null if user is not found in cache or DB', async () => {
+            mockRedisGet.mockResolvedValueOnce(null);
+            prismaClientMock.user.findFirst.mockResolvedValueOnce(null);
+
+            const result = await userService.getUserByPublicKey(mockPublicKey);
+
+            expect(mockRedisGet).toHaveBeenCalledWith(cacheKey);
+            expect(prismaClientMock.user.findFirst).toHaveBeenCalled();
+            expect(mockRedisSet).not.toHaveBeenCalled();
+            expect(result).toBeNull();
         });
     });
 });

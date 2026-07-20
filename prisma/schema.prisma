@@ -24,6 +24,9 @@ model SavingsGroup {
   contributionAmount   Decimal
   contributionFrequency String        // e.g., "WEEKLY", "MONTHLY"
   stellarContractId    String?        // Soroban contract ID once deployed
+  currentCycleStart    DateTime?
+  currentCycleEnd      DateTime?
+  bullMqJobId          String?
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
   members              GroupMember[]

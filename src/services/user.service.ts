@@ -4,6 +4,7 @@ import { WhatsAppService } from './whatsapp.service';
 import { decrypt } from '../utils/encryption.util';
 import { config } from '../config/env';
 import { t } from './locale.service';
+import { redisClient } from '../lib/redis';
 
 const stellarService = new StellarService();
 const whatsappService = new WhatsAppService();
@@ -60,5 +61,31 @@ export class UserService {
         } else {
             return await prisma.user.findUnique({ where: { phoneNumber: target } });
         }
+    }
+
+    public async getUserByPublicKey(publicKey: string): Promise<any> {
+        const cacheKey = `address_to_username:${publicKey}`;
+        try {
+            const cached = await redisClient.get(cacheKey);
+            if (cached) {
+                return JSON.parse(cached);
+            }
+        } catch (e) {
+            console.error('Redis get error:', e);
+        }
+
+        const user = await prisma.user.findFirst({
+            where: { stellarWallet: { contains: publicKey } },
+            select: { username: true, phoneNumber: true }
+        });
+
+        if (user) {
+            try {
+                await redisClient.set(cacheKey, JSON.stringify(user), 'EX', 3600); // 1 hour TTL
+            } catch (e) {
+                console.error('Redis set error:', e);
+            }
+        }
+        return user;
     }
 }

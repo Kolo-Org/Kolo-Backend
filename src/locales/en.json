@@ -5,7 +5,16 @@
     "asset_not_found": "You don't have a trustline for {{asset}}."
   },
   "history": {
-    "fetching": "[HISTORY] Fetching transaction history for {{phone}}..."
+    "fetching": "[HISTORY] Fetching transaction history for {{phone}}...",
+    "header": "📜 Transaction History (Last 10):\n\n",
+    "item_sent": "{{index}}. ✅ Sent {{amount}} {{asset}} to {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_received": "{{index}}. 📥 Received {{amount}} {{asset}} from {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_other": "{{index}}. 🔄 {{type}} ({{amount}} {{asset}})\n   {{date}} • tx: {{hash}}",
+    "more": "\nReply HISTORY MORE to see older transactions",
+    "no_more": "\nNo more transactions to show.",
+    "not_funded": "No transaction history — your wallet hasn't been funded yet",
+    "unavailable": "Transaction history is temporarily unavailable. Please try again later.",
+    "no_wallet": "Error: Your wallet is not configured."
   },
   "profile": {
     "card": "*Kolo Profile*\nPhone: {{phone}}\nUsername: {{username}}\nWallet: {{wallet}}\nJoined: {{joined}}"
