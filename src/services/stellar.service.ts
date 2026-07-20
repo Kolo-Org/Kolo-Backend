@@ -9,6 +9,19 @@ export interface GeneratedWallet {
     authTag: string;
 }
 
+export interface AssetBalance {
+    assetCode: string;
+    issuer: string;
+    balance: string;
+}
+
+export class InsufficientReserveError extends Error {
+    constructor() {
+        super('Account does not have enough XLM to cover the trustline reserve.');
+        this.name = 'InsufficientReserveError';
+    }
+}
+
 export class StellarService {
     private server: StellarSdk.Horizon.Server;
 
@@ -52,14 +65,17 @@ export class StellarService {
         }
     }
 
-    public async checkBalance(publicKey: string): Promise<string> {
+    public async checkBalance(publicKey: string): Promise<AssetBalance[]> {
         try {
             const account = await this.server.loadAccount(publicKey);
-            const balance = account.balances.find((b) => b.asset_type === 'native');
-            return balance ? balance.balance : '0';
+            return account.balances.map((b) => ({
+                assetCode: b.asset_type === 'native' ? 'XLM' : (b as any).asset_code,
+                issuer: b.asset_type === 'native' ? '' : (b as any).asset_issuer,
+                balance: b.balance,
+            }));
         } catch (error) {
             console.error('Error checking balance:', error);
-            return 'Error checking balance or account not funded.';
+            return [];
         }
     }
 
@@ -69,9 +85,7 @@ export class StellarService {
 
         const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
             fee: (await this.server.fetchBaseFee()).toString(),
-            networkPassphrase: config.STELLAR_NETWORK === 'TESTNET' 
-                ? StellarSdk.Networks.TESTNET 
-                : StellarSdk.Networks.PUBLIC
+            networkPassphrase: this.networkPassphrase(),
         })
         .addOperation(StellarSdk.Operation.payment({
             destination: destinationPublicKey,
@@ -210,5 +224,61 @@ export class StellarService {
         }
 
         return result;
+    }
+
+    /**
+     * Establishes a trustline for an issued asset (e.g. USDC) so the account can hold it.
+     * No-op if the trustline already exists. Only ever called for assets we've explicitly
+     * configured (e.g. USDC_ISSUER_PUBLIC_KEY) — never auto-create trustlines for unknown assets.
+     */
+    public async createTrustline(userSecret: string, assetCode: string, issuerPublicKey: string): Promise<void> {
+        const sourceKeypair = StellarSdk.Keypair.fromSecret(userSecret);
+
+        let sourceAccount;
+        try {
+            sourceAccount = await this.server.loadAccount(sourceKeypair.publicKey());
+        } catch (error: any) {
+            if (error?.response?.status === 404) {
+                throw new InsufficientReserveError();
+            }
+            throw error;
+        }
+
+        const alreadyTrusted = sourceAccount.balances.some(
+            (b) => b.asset_type !== 'native' && (b as any).asset_code === assetCode && (b as any).asset_issuer === issuerPublicKey,
+        );
+        if (alreadyTrusted) return;
+
+        const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
+            fee: (await this.server.fetchBaseFee()).toString(),
+            networkPassphrase: this.networkPassphrase(),
+        })
+        .addOperation(StellarSdk.Operation.changeTrust({
+            asset: new StellarSdk.Asset(assetCode, issuerPublicKey),
+        }))
+        .setTimeout(30)
+        .build();
+
+        transaction.sign(sourceKeypair);
+
+        try {
+            await this.server.submitTransaction(transaction);
+        } catch (error) {
+            if (this.isLowReserveError(error)) {
+                throw new InsufficientReserveError();
+            }
+            throw error;
+        }
+    }
+
+    private networkPassphrase(): string {
+        return config.STELLAR_NETWORK === 'TESTNET'
+            ? StellarSdk.Networks.TESTNET
+            : StellarSdk.Networks.PUBLIC;
+    }
+
+    private isLowReserveError(error: any): boolean {
+        const resultCodes = error?.response?.data?.extras?.result_codes;
+        return resultCodes?.operations?.includes('op_low_reserve') || resultCodes?.transaction === 'tx_insufficient_balance';
     }
 }

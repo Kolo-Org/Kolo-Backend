@@ -72,7 +72,7 @@ export class MessageProcessor {
 
             switch (cmd1) {
                 case 'BALANCE':
-                    return await this.handleBalance(from);
+                    return await this.handleBalance(from, tokens.slice(1));
                 case 'HISTORY':
                     return await this.handleHistory(from, tokens.slice(1));
                 case 'PROFILE':
@@ -101,7 +101,7 @@ export class MessageProcessor {
         }
     }
 
-    private async handleBalance(from: string) {
+    private async handleBalance(from: string, args: string[] = []) {
         const user = await this.userService.getOrCreateUser(from);
         const lang = user.language ?? 'en';
 
@@ -109,8 +109,20 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, t('balance.no_wallet', lang));
         }
         const { publicKey } = JSON.parse(user.stellarWallet);
-        const balance = await this.stellarService.checkBalance(publicKey);
-        await this.whatsappService.sendMessage(from, t('balance.success', lang, { balance }));
+        const balances = await this.stellarService.checkBalance(publicKey);
+
+        const assetFilter = args[0]?.toUpperCase();
+        const shown = assetFilter ? balances.filter((b) => b.assetCode === assetFilter) : balances;
+
+        if (assetFilter && shown.length === 0) {
+            return await this.whatsappService.sendMessage(
+                from,
+                t('balance.asset_not_found', lang, { asset: assetFilter }),
+            );
+        }
+
+        const balanceLines = shown.map((b) => `${b.assetCode}: ${b.balance}`).join('\n');
+        await this.whatsappService.sendMessage(from, t('balance.success', lang, { balances: balanceLines }));
     }
 
     private async handleHistory(from: string, args: string[]) {

@@ -24,7 +24,7 @@ describe('locale.service', () => {
         it('should return the English balance success string with interpolation', async () => {
             const { initI18n, t } = await import('../services/locale.service');
             await initI18n();
-            const result = t('balance.success', 'en', { balance: '42.00' });
+            const result = t('balance.success', 'en', { balances: 'XLM: 42.00' });
             expect(result).toContain('42.00');
             expect(result).toContain('XLM');
         });
@@ -61,8 +61,9 @@ describe('locale.service', () => {
         it('should return French for balance.success', async () => {
             const { initI18n, t } = await import('../services/locale.service');
             await initI18n();
-            const result = t('balance.success', 'fr', { balance: '10' });
-            expect(result).toContain('solde');
+            const result = t('balance.success', 'fr', { balances: 'XLM: 10' });
+            expect(result).toContain('Soldes');
+            expect(result).toContain('XLM: 10');
         });
 
         it('should return French for unknown.command', async () => {
@@ -82,7 +83,7 @@ describe('locale.service', () => {
         it('should return Yoruba for balance.success', async () => {
             const { initI18n, t } = await import('../services/locale.service');
             await initI18n();
-            const result = t('balance.success', 'yo', { balance: '5' });
+            const result = t('balance.success', 'yo', { balances: 'XLM: 5' });
             expect(result).toContain('XLM');
         });
 
