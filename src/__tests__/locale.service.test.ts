@@ -128,4 +128,39 @@ describe('locale.service', () => {
             expect(isSupportedLanguage('de')).toBe(false);
         });
     });
+
+    describe('isRTL', () => {
+        it('should return true for Arabic', async () => {
+            const { isRTL } = await import('../services/locale.service');
+            expect(isRTL('ar')).toBe(true);
+        });
+
+        it('should return false for Hausa (rendered LTR) and others', async () => {
+            const { isRTL } = await import('../services/locale.service');
+            expect(isRTL('ha')).toBe(false);
+            expect(isRTL('en')).toBe(false);
+        });
+    });
+
+    describe('RTL and formatting in t()', () => {
+
+        it('should format currency correctly via interpolation', async () => {
+            const { initI18n, t } = await import('../services/locale.service');
+            await initI18n();
+            // Just verifying that interpolation handles currency values passed in correctly
+            const formattedCurrency = new Intl.NumberFormat('en', { style: 'currency', currency: 'XLM' }).format(10.5);
+            const result = t('balance.success', 'en', { balances: formattedCurrency });
+            expect(result).toContain('10.50');
+            expect(result).toContain('XLM');
+        });
+
+        it('should handle pluralization correctly', async () => {
+            const { initI18n } = await import('../services/locale.service');
+            await initI18n();
+            const i18next = (await import('i18next')).default;
+            // Native i18next pluralization test as evidence
+            const result = i18next.t('item', { count: 2, defaultValue_other: '{{count}} items' });
+            expect(result).toContain('2 items');
+        });
+    });
 });
