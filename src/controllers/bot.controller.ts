@@ -16,6 +16,13 @@ const ENQUEUE_TIMEOUT_MS = 10_000;
  * webhook is public, so we must treat the body as untrusted and never assume a
  * field exists. We only model the slice we actually read.
  */
+interface WhatsAppContact {
+    wa_id?: string;
+    profile?: {
+        name?: string;
+    };
+}
+
 interface WhatsAppTextMessage {
     from?: string;
     id?: string;
@@ -24,6 +31,7 @@ interface WhatsAppTextMessage {
 
 interface WhatsAppChangeValue {
     messages?: WhatsAppTextMessage[];
+    contacts?: WhatsAppContact[];
 }
 
 interface WhatsAppChange {
@@ -43,6 +51,7 @@ export interface IncomingTextMessage {
     from: string;
     msgBody: string;
     whatsappMessageId: string;
+    locale?: string;
 }
 
 export class BotController {
@@ -72,7 +81,10 @@ export class BotController {
      * Returns null when there is no actionable text message.
      */
     private extractTextMessage(body: WhatsAppWebhookBody): IncomingTextMessage | null {
-        const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+        const value = body.entry?.[0]?.changes?.[0]?.value;
+        const message = value?.messages?.[0];
+        const contacts = value?.contacts;
+        
         const from = message?.from;
         const msgBody = message?.text?.body;
         const id = message?.id;
@@ -81,7 +93,14 @@ export class BotController {
             return null;
         }
 
-        return { from, msgBody, whatsappMessageId: id };
+        // Try to extract locale if available in contacts metadata for this sender (e.g., from WhatsApp profile)
+        let locale: string | undefined;
+        const contact = contacts?.find(c => c.wa_id === from);
+        if (contact && (contact as any).profile?.locale) {
+            locale = (contact as any).profile.locale;
+        }
+
+        return { from, msgBody, whatsappMessageId: id, locale };
     }
 
     public async handleMessage(req: Request, res: Response) {
@@ -108,6 +127,7 @@ export class BotController {
                 from: message.from,
                 msgBody: message.msgBody,
                 whatsappMessageId: message.whatsappMessageId,
+                locale: message.locale,
             });
         } catch (err) {
             observabilityService.alertCriticalFailure('Failed to enqueue webhook message', err, {

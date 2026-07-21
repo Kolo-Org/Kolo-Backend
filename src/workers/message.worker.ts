@@ -25,9 +25,9 @@ export function startWorker(): void {
     workerInstance = new Worker(
         'message-processing',
         async (job) => {
-            const { from, msgBody } = job.data;
+            const { from, msgBody, locale } = job.data;
             console.log(`Processing job ${job.id}`);
-            await processor.processCommand(from, msgBody);
+            await processor.processCommand(from, msgBody, locale);
         },
         {
             connection,

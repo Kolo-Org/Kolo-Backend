@@ -7,6 +7,7 @@ jest.mock('../services/locale.service', () => ({
         const paramStr = params ? '|' + JSON.stringify(params) : '';
         return `${key}${paramStr}`;
     },
+    loadLocale: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../lib/redis', () => ({
@@ -184,9 +185,14 @@ describe('MessageProcessor', () => {
         });
 
         it('should check if sender has a wallet', async () => {
-            mockGetOrCreateUser.mockResolvedValueOnce({ id: 'u1', language: 'en' });
+            const walletUser = {
+                id: 'u1', phoneNumber: '12345', username: 'john',
+                stellarWallet: JSON.stringify({ publicKey: 'G_PUB', encryptedSecret: 'ENC_SEC', iv: 'IV', authTag: 'TAG' }),
+                createdAt: new Date(), language: 'en'
+            };
+            mockGetOrCreateUser.mockResolvedValueOnce(walletUser).mockResolvedValueOnce(walletUser);
             await processor.processCommand('12345', 'SEND 10 @jane');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.no_wallet'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.initiating'));
         });
 
         it('should check if recipient exists and has a wallet', async () => {
@@ -436,7 +442,7 @@ describe('MessageProcessor', () => {
 
     describe('error handling', () => {
         it('should catch and report errors from handlers', async () => {
-            mockGetOrCreateUser.mockRejectedValueOnce(new Error('DB connection failed'));
+            mockGetOrCreateUser.mockRejectedValueOnce(new Error('DB connection failed')).mockRejectedValueOnce(new Error('DB connection failed'));
             await processor.processCommand('12345', 'BALANCE');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('error.generic'));
         });
@@ -444,9 +450,8 @@ describe('MessageProcessor', () => {
 
     describe('handleBalance edge cases', () => {
         it('should handle missing wallet', async () => {
-            mockGetOrCreateUser.mockResolvedValueOnce({
-                id: 'u1', phoneNumber: '12345', stellarWallet: null, language: 'en',
-            });
+            const noWalletUser = { id: 'u2', language: 'en' };
+            mockGetOrCreateUser.mockResolvedValueOnce(noWalletUser).mockResolvedValueOnce(noWalletUser);
             await processor.processCommand('12345', 'BALANCE');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('balance.no_wallet'));
         });

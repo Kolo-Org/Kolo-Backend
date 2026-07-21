@@ -3,7 +3,7 @@ import { StellarService } from './stellar.service';
 import { UserService } from './user.service';
 import { GroupService } from './group.service';
 import { decrypt } from '../utils/encryption.util';
-import { t } from './locale.service';
+import { t, isSupportedLanguage, loadLocale } from './locale.service';
 import { redisClient } from '../lib/redis';
 
 export class MessageProcessor {
@@ -52,9 +52,19 @@ export class MessageProcessor {
         return null;
     }
 
-    public async processCommand(from: string, text: string) {
+    public async processCommand(from: string, text: string, locale?: string) {
         const tokens = text.trim().split(/\s+/);
         if (tokens.length === 0) return;
+
+        // Ensure user is created/fetched with locale early on
+        const user = await this.userService.getOrCreateUser(from, locale).catch(e => {
+            console.error('Failed early user creation', e);
+            return null;
+        });
+
+        if (user && user.language) {
+            await loadLocale(user.language);
+        }
 
         const cmd1 = tokens[0].toUpperCase();
         const cmd2 = tokens.length > 1 ? tokens[1].toUpperCase() : '';
@@ -71,6 +81,8 @@ export class MessageProcessor {
             }
 
             switch (cmd1) {
+                case 'LANGUAGE':
+                    return await this.handleLanguage(from, tokens.slice(1));
                 case 'BALANCE':
                     return await this.handleBalance(from, tokens.slice(1));
                 case 'HISTORY':
@@ -93,12 +105,43 @@ export class MessageProcessor {
             }
         } catch (error: any) {
             console.error('Error processing command:', error);
-            const user = await this.userService.getOrCreateUser(from).catch(() => ({ language: 'en' }));
+            const user = await this.userService.getOrCreateUser(from, locale).catch(() => ({ language: 'en' }));
             await this.whatsappService.sendMessage(
                 from,
                 t('error.generic', user.language ?? 'en', { message: error.message }),
             );
         }
+    }
+
+    private async handleLanguage(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        let lang = user.language ?? 'en';
+        
+        if (args.length === 0) {
+            return await this.whatsappService.sendMessage(from, t('language.current', lang, { current: lang }));
+        }
+
+        const requestedLang = args[0].toLowerCase();
+        
+        // Map common names to codes
+        const langMap: Record<string, string> = {
+            'english': 'en',
+            'french': 'fr',
+            'yoruba': 'yo',
+            'pidgin': 'pcm',
+            'hausa': 'ha',
+            'igbo': 'ig'
+        };
+
+        const targetCode = langMap[requestedLang] || requestedLang;
+        
+        if (!isSupportedLanguage(targetCode)) {
+            return await this.whatsappService.sendMessage(from, t('language.unsupported', lang));
+        }
+
+        await this.userService.updateUserLanguage(from, targetCode);
+        await loadLocale(targetCode);
+        return await this.whatsappService.sendMessage(from, t('language.success', targetCode));
     }
 
     private async handleBalance(from: string, args: string[] = []) {

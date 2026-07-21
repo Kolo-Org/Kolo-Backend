@@ -45,9 +45,9 @@ describe('MessageWorker', () => {
 
     it('should call processCommand when processing a job', async () => {
         startWorker();
-        const job = { id: 'job-1', data: { from: '12345', msgBody: 'BALANCE' } };
+        const job = { id: 'job-1', data: { from: '12345', msgBody: 'BALANCE', locale: 'en' } };
         await mockWorkerInstance.callback(job);
-        expect(mockProcessCommand).toHaveBeenCalledWith('12345', 'BALANCE');
+        expect(mockProcessCommand).toHaveBeenCalledWith('12345', 'BALANCE', 'en');
     });
 
     it('should not start a second worker instance', () => {

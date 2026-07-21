@@ -83,6 +83,11 @@
   "error": {
     "generic": "An error occurred: {{message}}"
   },
+  "language": {
+    "current": "Your current language is: {{current}}. Reply with LANGUAGE <yoruba/pidgin/french/hausa/igbo/english> to change it.",
+    "unsupported": "Unsupported language. Please choose from: yoruba, pidgin, french, hausa, igbo, english.",
+    "success": "✅ Language changed successfully!"
+  },
   "wallet": {
     "usdc_trustline_low_reserve": "You need at least 2 XLM in your wallet to enable USDC."
   }
