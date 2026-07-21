@@ -46,6 +46,24 @@
     "header": "*Vos Groupes :*\n\n",
     "entry": "*{{name}}*\nObjectif : {{amount}} XLM ({{frequency}})\nRôle : {{role}}\nMembres : {{count}}\n\n"
   },
+  "payout": {
+    "usage": "Utilisation : PAYOUT <ORDER|STATUS|WAIT|PROCEED|SKIP>",
+    "no_group": "Erreur : Vous ne faites partie d'aucun groupe.",
+    "not_creator": "Erreur : Vous n'êtes pas le créateur d'un groupe.",
+    "order_usage": "Utilisation : PAYOUT ORDER <@utilisateur1> <@utilisateur2> ... (listez chaque membre une seule fois)",
+    "order_success": "✅ Ordre de paiement mis à jour.",
+    "order_failed": "❌ Échec de la mise à jour de l'ordre de paiement : {{message}}",
+    "order_invalid_member": "Erreur : Impossible de trouver l'utilisateur {{target}}.",
+    "status": "*Rotation des paiements pour {{name}}*\nCycle : {{cycle}}\nProchain : {{next}}\n\n{{order}}",
+    "wait_success": "⏳ Délai prolongé de 24 heures.",
+    "wait_failed": "❌ Impossible de prolonger le délai : {{message}}",
+    "proceed_success": "✅ Paiement effectué avec la cagnotte partielle.",
+    "proceed_failed": "❌ Impossible d'effectuer le paiement : {{message}}",
+    "skip_usage": "Utilisation : PAYOUT SKIP <@utilisateur ou téléphone>",
+    "skip_success": "✅ {{target}} a été déplacé à la fin de la rotation.",
+    "skip_failed": "❌ Impossible d'ignorer ce membre : {{message}}",
+    "skip_no_user": "Erreur : Impossible de trouver l'utilisateur {{target}}."
+  },
   "contribute": {
     "usage": "Utilisation : CONTRIBUTE <montant>",
     "no_group": "Erreur : Vous ne faites partie d'aucun groupe.",
@@ -66,7 +84,7 @@
     "success": "✅ {{amount}} XLM retirés avec succès du pool \"{{groupName}}\" ! (SIMULÉ)"
   },
   "help": {
-    "text": "*Commandes Kolo :*\n\n_Compte_\nBALANCE\nBALANCE <actif>\nHISTORY\nPROFILE\n\n_Paiements_\nSEND <montant> <@utilisateur>\nREQUEST <montant> <@utilisateur>\n\n_Groupes d'épargne_\nCREATE GROUP <nom> <montant> <fréquence>\nJOIN GROUP <groupId>\nINVITE MEMBER <@utilisateur>\nGROUP STATUS\nCONTRIBUTE <montant>\nWITHDRAW <montant>\n\n_Assistance_\nHELP\nSUPPORT"
+    "text": "*Commandes Kolo :*\n\n_Compte_\nBALANCE\nBALANCE <actif>\nHISTORY\nPROFILE\n\n_Paiements_\nSEND <montant> <@utilisateur>\nREQUEST <montant> <@utilisateur>\n\n_Groupes d'épargne_\nCREATE GROUP <nom> <montant> <fréquence>\nJOIN GROUP <groupId>\nINVITE MEMBER <@utilisateur>\nGROUP STATUS\nCONTRIBUTE <montant>\nWITHDRAW <montant>\n\n_Rotation des paiements_\nPAYOUT ORDER <@utilisateur1> <@utilisateur2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@utilisateur>\n\n_Assistance_\nHELP\nSUPPORT"
   },
   "unknown": {
     "command": "Je n'ai pas compris cette commande. Envoyez HELP pour voir les commandes disponibles."

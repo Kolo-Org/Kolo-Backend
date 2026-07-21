@@ -55,6 +55,24 @@
     "header": "*Your Groups:*\n\n",
     "entry": "*{{name}}*\nTarget: {{amount}} XLM ({{frequency}})\nRole: {{role}}\nMembers: {{count}}\n\n"
   },
+  "payout": {
+    "usage": "How to use: PAYOUT <ORDER|STATUS|WAIT|PROCEED|SKIP>",
+    "no_group": "Error: You no dey any group.",
+    "not_creator": "Error: You never create any group.",
+    "order_usage": "How to use: PAYOUT ORDER <@user1> <@user2> ... (list every member one time)",
+    "order_success": "✅ Payout order don update.",
+    "order_failed": "❌ We no fit update payout order: {{message}}",
+    "order_invalid_member": "Error: We no find user {{target}}.",
+    "status": "*Payout Rotation for {{name}}*\nCycle: {{cycle}}\nNext person: {{next}}\n\n{{order}}",
+    "wait_success": "⏳ Deadline don extend by 24 hours.",
+    "wait_failed": "❌ We no fit extend deadline: {{message}}",
+    "proceed_success": "✅ We don process payout with the money wey dey available.",
+    "proceed_failed": "❌ We no fit process payout: {{message}}",
+    "skip_usage": "How to use: PAYOUT SKIP <@username or phone>",
+    "skip_success": "✅ {{target}} don move go back of the line.",
+    "skip_failed": "❌ We no fit skip member: {{message}}",
+    "skip_no_user": "Error: We no find user {{target}}."
+  },
   "contribute": {
     "usage": "How to use: CONTRIBUTE <amount>",
     "no_group": "Error: You no dey any group.",
@@ -75,7 +93,7 @@
     "success": "✅ You don successfully withdraw {{amount}} XLM from \"{{groupName}}\"! (MOCKED)"
   },
   "help": {
-    "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Support_\nHELP\nSUPPORT"
+    "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Payout Rotation_\nPAYOUT ORDER <@user1> <@user2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@user>\n\n_Support_\nHELP\nSUPPORT"
   },
   "unknown": {
     "command": "I no understand that command. Send HELP to see commands wey dey work."

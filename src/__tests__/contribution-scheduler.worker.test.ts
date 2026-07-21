@@ -2,7 +2,7 @@ import { startContributionSchedulerWorker, closeContributionWorker } from '../wo
 import { redisClient } from '../lib/redis';
 import { PrismaClient } from '@prisma/client';
 import { WhatsAppService } from '../services/whatsapp.service';
-import { GroupService } from '../services/group.service';
+import { PayoutService } from '../services/payout.service';
 import { Job } from 'bullmq';
 
 jest.mock('@prisma/client', () => {
@@ -21,7 +21,7 @@ jest.mock('@prisma/client', () => {
 });
 
 jest.mock('../services/whatsapp.service');
-jest.mock('../services/group.service');
+jest.mock('../services/payout.service');
 jest.mock('../queue/contribution-scheduler.queue');
 
 jest.mock('bullmq', () => {
@@ -111,6 +111,38 @@ describe('Contribution Scheduler Worker', () => {
                 '+1234567890',
                 expect.stringContaining('Last call reminder')
             );
+        });
+    });
+
+    describe('cycle-end', () => {
+        it('delegates to PayoutService.processCycleEnd for the group', async () => {
+            prisma.savingsGroup.findUnique.mockResolvedValue({ id: 'group-1' });
+
+            const job = {
+                name: 'cycle-end',
+                id: 'job-2',
+                data: { groupId: 'group-1' }
+            } as Job;
+
+            await workerCallback(job);
+
+            const processCycleEndMock = PayoutService.prototype.processCycleEnd as jest.Mock;
+            expect(processCycleEndMock).toHaveBeenCalledWith('group-1');
+        });
+
+        it('does nothing when the group no longer exists', async () => {
+            prisma.savingsGroup.findUnique.mockResolvedValue(null);
+
+            const job = {
+                name: 'cycle-end',
+                id: 'job-3',
+                data: { groupId: 'ghost-group' }
+            } as Job;
+
+            await workerCallback(job);
+
+            const processCycleEndMock = PayoutService.prototype.processCycleEnd as jest.Mock;
+            expect(processCycleEndMock).not.toHaveBeenCalled();
         });
     });
 });

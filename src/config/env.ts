@@ -12,4 +12,6 @@ export const config = {
     REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || '', // Must be a 32-byte hex string
     USDC_ISSUER_PUBLIC_KEY: process.env.USDC_ISSUER_PUBLIC_KEY || '', // SDF testnet issuer or Circle/centre.io mainnet issuer, depending on STELLAR_NETWORK
+    GROUP_TREASURY_SECRET: process.env.GROUP_TREASURY_SECRET || '', // Interim shared signer for pooled group payouts, until per-group custodial wallets/Soroban contract deployment lands
+    MAX_PAYOUT_DEADLINE_EXTENSIONS: Number(process.env.MAX_PAYOUT_DEADLINE_EXTENSIONS || 2),
 };
