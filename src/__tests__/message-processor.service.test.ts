@@ -133,7 +133,7 @@ describe('MessageProcessor', () => {
         });
 
         it('should check if sender has a wallet', async () => {
-            mockGetOrCreateUser.mockResolvedValueOnce({ id: 'u1', language: 'en' });
+            mockGetOrCreateUser.mockResolvedValueOnce({ id: 'u1', language: 'en' }).mockResolvedValueOnce({ id: 'u1', language: 'en' });
             await processor.processCommand('12345', 'SEND 10 @jane');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.no_wallet'));
         });
@@ -385,7 +385,7 @@ describe('MessageProcessor', () => {
 
     describe('error handling', () => {
         it('should catch and report errors from handlers', async () => {
-            mockGetOrCreateUser.mockRejectedValueOnce(new Error('DB connection failed'));
+            mockGetOrCreateUser.mockRejectedValueOnce(new Error('DB connection failed')).mockRejectedValueOnce(new Error('DB connection failed'));
             await processor.processCommand('12345', 'BALANCE');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('error.generic'));
         });
@@ -393,9 +393,8 @@ describe('MessageProcessor', () => {
 
     describe('handleBalance edge cases', () => {
         it('should handle missing wallet', async () => {
-            mockGetOrCreateUser.mockResolvedValueOnce({
-                id: 'u1', phoneNumber: '12345', stellarWallet: null, language: 'en',
-            });
+            const noWalletUser = { id: 'u2', language: 'en' };
+            mockGetOrCreateUser.mockResolvedValueOnce(noWalletUser).mockResolvedValueOnce(noWalletUser);
             await processor.processCommand('12345', 'BALANCE');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('balance.no_wallet'));
         });

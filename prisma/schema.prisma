@@ -12,6 +12,7 @@ model User {
   phoneNumber     String         @unique
   username        String?        @unique
   stellarWallet   String?        @unique // JSON: {"publicKey":"...","encryptedSecret":"...","iv":"...","authTag":"..."}
+  language        String         @default("en")
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   groups          GroupMember[]

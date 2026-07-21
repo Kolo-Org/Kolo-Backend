@@ -72,5 +72,10 @@
   },
   "error": {
     "generic": "Aṣiṣe ṣẹlẹ: {{message}}"
+  },
+  "language": {
+    "current": "Ede rẹ lowolowo ni: {{current}}. Firanṣẹ LANGUAGE <yoruba/pidgin/french/hausa/igbo/english> lati yi pada.",
+    "unsupported": "Ede ti ko ni atilẹyin. Jowo yan ninu: yoruba, pidgin, french, hausa, igbo, english.",
+    "success": "✅ Ede rẹ ti yipada ni aṣeyọri!"
   }
 }

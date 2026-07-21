@@ -3,8 +3,10 @@ import { StellarService } from './stellar.service';
 
 const stellarService = new StellarService();
 
+import { isSupportedLanguage } from './locale.service';
+
 export class UserService {
-    public async getOrCreateUser(phoneNumber: string): Promise<any> {
+    public async getOrCreateUser(phoneNumber: string, locale?: string): Promise<any> {
         let user = await prisma.user.findUnique({
             where: { phoneNumber }
         });
@@ -25,10 +27,13 @@ export class UserService {
                 authTag: wallet.authTag,
             });
 
+            const defaultLang = locale && isSupportedLanguage(locale) ? locale : 'en';
+
             user = await prisma.user.create({
                 data: {
                     phoneNumber,
                     stellarWallet: walletData,
+                    language: defaultLang,
                 }
             });
             console.log(`Created new user for ${phoneNumber} with wallet ${wallet.publicKey}`);
@@ -42,5 +47,12 @@ export class UserService {
         } else {
             return await prisma.user.findUnique({ where: { phoneNumber: target } });
         }
+    }
+
+    public async updateUserLanguage(phoneNumber: string, language: string): Promise<any> {
+        return await prisma.user.update({
+            where: { phoneNumber },
+            data: { language }
+        });
     }
 }
