@@ -46,6 +46,24 @@
     "header": "*Àwọn Ẹgbẹ́ Rẹ:*\n\n",
     "entry": "*{{name}}*\nÀfojúsùn: {{amount}} XLM ({{frequency}})\nÌpò: {{role}}\nÀwọn Ọmọ Ẹgbẹ́: {{count}}\n\n"
   },
+  "payout": {
+    "usage": "Lílo: PAYOUT <ORDER|STATUS|WAIT|PROCEED|SKIP>",
+    "no_group": "Aṣiṣe: Ìwọ kò jẹ́ apá ẹgbẹ́ kankan.",
+    "not_creator": "Aṣiṣe: Ìwọ kò ṣẹda ẹgbẹ́ kankan.",
+    "order_usage": "Lílo: PAYOUT ORDER <@olùmúlò1> <@olùmúlò2> ... (kọ orúkọ ọmọ ẹgbẹ́ kọ̀ọ̀kan lẹ́ẹ̀kan)",
+    "order_success": "✅ Ìlànà ìsanwó ti di ìmúdójúìwọ̀n.",
+    "order_failed": "❌ Kùnà láti ṣàtúnṣe ìlànà ìsanwó: {{message}}",
+    "order_invalid_member": "Aṣiṣe: Ko lè rí olùmúlò {{target}}.",
+    "status": "*Ìyípo Ìsanwó fún {{name}}*\nÌyípo: {{cycle}}\nẸni tó kàn: {{next}}\n\n{{order}}",
+    "wait_success": "⏳ Àkókò tí a fún ní gùn sí wákàtí 24.",
+    "wait_failed": "❌ Kùnà láti fa àkókò gùn: {{message}}",
+    "proceed_success": "✅ Ìsanwó ti ṣe pẹ̀lú owó tó wà.",
+    "proceed_failed": "❌ Kùnà láti ṣe ìsanwó: {{message}}",
+    "skip_usage": "Lílo: PAYOUT SKIP <@olùmúlò tabi fóònù>",
+    "skip_success": "✅ A ti gbé {{target}} lọ sí ìparí ìlànà náà.",
+    "skip_failed": "❌ Kùnà láti fo ọmọ ẹgbẹ́: {{message}}",
+    "skip_no_user": "Aṣiṣe: Ko lè rí olùmúlò {{target}}."
+  },
   "contribute": {
     "usage": "Lílo: CONTRIBUTE <iye>",
     "no_group": "Aṣiṣe: Ìwọ kò jẹ́ apá ẹgbẹ́ kankan.",
@@ -66,7 +84,7 @@
     "success": "✅ Yíyọ {{amount}} XLM kúrò nínú \"{{groupName}}\" ti ṣeyọrí! (ADANWÒ)"
   },
   "help": {
-    "text": "*Àwọn Àṣẹ Kolo:*\n\n_Àkọọlẹ_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Àwọn Ìsanwó_\nSEND <iye> <@olùmúlò>\nREQUEST <iye> <@olùmúlò>\n\n_Àwọn Ẹgbẹ́ Ìfowópamọ́_\nCREATE GROUP <orúkọ> <iye> <ìgbà>\nJOIN GROUP <groupId>\nINVITE MEMBER <@olùmúlò>\nGROUP STATUS\nCONTRIBUTE <iye>\nWITHDRAW <iye>\n\n_Ìrànlọ́wọ́_\nHELP\nSUPPORT"
+    "text": "*Àwọn Àṣẹ Kolo:*\n\n_Àkọọlẹ_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Àwọn Ìsanwó_\nSEND <iye> <@olùmúlò>\nREQUEST <iye> <@olùmúlò>\n\n_Àwọn Ẹgbẹ́ Ìfowópamọ́_\nCREATE GROUP <orúkọ> <iye> <ìgbà>\nJOIN GROUP <groupId>\nINVITE MEMBER <@olùmúlò>\nGROUP STATUS\nCONTRIBUTE <iye>\nWITHDRAW <iye>\n\n_Ìyípo Ìsanwó_\nPAYOUT ORDER <@olùmúlò1> <@olùmúlò2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@olùmúlò>\n\n_Ìrànlọ́wọ́_\nHELP\nSUPPORT"
   },
   "unknown": {
     "command": "미 ko gbọ́ àṣẹ yẹn. Firanṣẹ HELP láti rí àwọn àṣẹ tó wà."

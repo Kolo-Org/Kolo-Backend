@@ -55,6 +55,24 @@
     "header": "*Rukunin Ku:*\n\n",
     "entry": "*{{name}}*\nBuri: {{amount}} XLM ({{frequency}})\nMatsayi: {{role}}\nMambobi: {{count}}\n\n"
   },
+  "payout": {
+    "usage": "Amfani: PAYOUT <ORDER|STATUS|WAIT|PROCEED|SKIP>",
+    "no_group": "Kuskure: Ba ka cikin kowane rukuni.",
+    "not_creator": "Kuskure: Ba kai ne ka kirkiro kowane rukuni ba.",
+    "order_usage": "Amfani: PAYOUT ORDER <@mai_amfani1> <@mai_amfani2> ... (jera kowane mamba sau daya)",
+    "order_success": "✅ An sabunta tsarin biyan kudi.",
+    "order_failed": "❌ An kasa sabunta tsarin biyan kudi: {{message}}",
+    "order_invalid_member": "Kuskure: Ba a iya samun mai amfani {{target}}.",
+    "status": "*Tsarin Biyan Kudi na {{name}}*\nZagaye: {{cycle}}\nMai zuwa: {{next}}\n\n{{order}}",
+    "wait_success": "⏳ An kara lokacin biya na sa'o'i 24.",
+    "wait_failed": "❌ An kasa kara lokaci: {{message}}",
+    "proceed_success": "✅ An yi biyan kudi da rabin kudin da aka tara.",
+    "proceed_failed": "❌ An kasa yin biyan kudi: {{message}}",
+    "skip_usage": "Amfani: PAYOUT SKIP <@mai_amfani ko waya>",
+    "skip_success": "✅ An mayar da {{target}} zuwa karshen jerin.",
+    "skip_failed": "❌ An kasa tsallake mamba: {{message}}",
+    "skip_no_user": "Kuskure: Ba a iya samun mai amfani {{target}}."
+  },
   "contribute": {
     "usage": "Amfani: CONTRIBUTE <adadi>",
     "no_group": "Kuskure: Ba ka cikin kowane rukuni.",
@@ -75,7 +93,7 @@
     "success": "✅ An yi nasarar cire {{amount}} XLM daga asusun \"{{groupName}}\"! (MOCKED)"
   },
   "help": {
-    "text": "*Umarnin Kolo:*\n\n_Asusu_\nBALANCE\nBALANCE <kadari>\nHISTORY\nPROFILE\n\n_Biyan Kudi_\nSEND <adadi> <@mai_amfani>\nREQUEST <adadi> <@mai_amfani>\n\n_Rukunin Ajiya_\nCREATE GROUP <suna> <adadi> <lokaci>\nJOIN GROUP <groupId>\nINVITE MEMBER <@mai_amfani>\nGROUP STATUS\nCONTRIBUTE <adadi>\nWITHDRAW <adadi>\n\n_Taimako_\nHELP\nSUPPORT"
+    "text": "*Umarnin Kolo:*\n\n_Asusu_\nBALANCE\nBALANCE <kadari>\nHISTORY\nPROFILE\n\n_Biyan Kudi_\nSEND <adadi> <@mai_amfani>\nREQUEST <adadi> <@mai_amfani>\n\n_Rukunin Ajiya_\nCREATE GROUP <suna> <adadi> <lokaci>\nJOIN GROUP <groupId>\nINVITE MEMBER <@mai_amfani>\nGROUP STATUS\nCONTRIBUTE <adadi>\nWITHDRAW <adadi>\n\n_Zagayen Biyan Kudi_\nPAYOUT ORDER <@mai_amfani1> <@mai_amfani2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@mai_amfani>\n\n_Taimako_\nHELP\nSUPPORT"
   },
   "unknown": {
     "command": "Ban gane wannan umarnin ba. Tura HELP domin ganin umarnin da ake da su."

@@ -8,39 +8,46 @@ generator client {
 }
 
 model User {
-  id              String         @id @default(uuid())
-  phoneNumber     String         @unique
-  username        String?        @unique
-  stellarWallet   String?        @unique // JSON: {"publicKey":"...","encryptedSecret":"...","iv":"...","authTag":"..."}
-  language        String         @default("en")
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  groups          GroupMember[]
-  contributions   Contribution[]
+  id            String         @id @default(uuid())
+  phoneNumber   String         @unique
+  username      String?        @unique
+  stellarWallet String?        @unique // JSON: {"publicKey":"...","encryptedSecret":"...","iv":"...","authTag":"..."}
+  language      String         @default("en")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  groups        GroupMember[]
+  contributions Contribution[]
 }
 
 model SavingsGroup {
-  id                   String         @id @default(uuid())
-  name                 String
-  contributionAmount   Decimal
-  contributionFrequency String        // e.g., "WEEKLY", "MONTHLY"
-  stellarContractId    String?        // Soroban contract ID once deployed
-  currentCycleStart    DateTime?
-  currentCycleEnd      DateTime?
-  bullMqJobId          String?
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
-  members              GroupMember[]
+  id                     String           @id @default(uuid())
+  name                   String
+  contributionAmount     Decimal
+  contributionFrequency  String // e.g., "WEEKLY", "MONTHLY"
+  stellarContractId      String? // Soroban contract ID once deployed
+  currentCycleStart      DateTime?
+  currentCycleEnd        DateTime?
+  bullMqJobId            String?
+  payoutOrder            Json? // Ordered array of member userIds; defaults to join order when null
+  currentPayoutIndex     Int              @default(0)
+  totalCycles            Int              @default(0)
+  payoutOrderLockedAt    DateTime? // Set once the first contribution of a cycle lands; blocks reordering
+  deadlineExtensionsUsed Int              @default(0)
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  members                GroupMember[]
+  payouts                Payout[]
+  payoutOrderLogs        PayoutOrderLog[]
 }
 
 model GroupMember {
-  id             String        @id @default(uuid())
-  user           User          @relation(fields: [userId], references: [id])
-  userId         String
-  group          SavingsGroup  @relation(fields: [groupId], references: [id])
-  groupId        String
-  role           String        @default("MEMBER") // e.g., "CREATOR", "MEMBER"
-  joinedAt       DateTime      @default(now())
+  id       String       @id @default(uuid())
+  user     User         @relation(fields: [userId], references: [id])
+  userId   String
+  group    SavingsGroup @relation(fields: [groupId], references: [id])
+  groupId  String
+  role     String       @default("MEMBER") // e.g., "CREATOR", "MEMBER"
+  joinedAt DateTime     @default(now())
 
   @@unique([userId, groupId])
   @@index([userId])
@@ -48,15 +55,43 @@ model GroupMember {
 }
 
 model Contribution {
-  id             String        @id @default(uuid())
-  user           User          @relation(fields: [userId], references: [id])
-  userId         String
-  groupId        String
-  amount         Decimal
+  id              String   @id @default(uuid())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          String
+  groupId         String
+  amount          Decimal
   transactionHash String?
-  status         String        @default("PENDING") // PENDING, COMPLETED, FAILED
-  createdAt      DateTime      @default(now())
+  status          String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  createdAt       DateTime @default(now())
 
   @@index([userId])
+  @@index([groupId])
+}
+
+model Payout {
+  id              String       @id @default(uuid())
+  group           SavingsGroup @relation(fields: [groupId], references: [id])
+  groupId         String
+  recipientId     String
+  amount          Decimal
+  transactionHash String
+  cycleNumber     Int
+  status          String       @default("COMPLETED")
+  createdAt       DateTime     @default(now())
+
+  @@index([groupId])
+  @@index([recipientId])
+}
+
+model PayoutOrderLog {
+  id            String       @id @default(uuid())
+  group         SavingsGroup @relation(fields: [groupId], references: [id])
+  groupId       String
+  changedBy     String
+  previousOrder Json?
+  newOrder      Json
+  reason        String       @default("REORDER") // e.g., "REORDER", "SKIP_DEFAULT"
+  createdAt     DateTime     @default(now())
+
   @@index([groupId])
 }

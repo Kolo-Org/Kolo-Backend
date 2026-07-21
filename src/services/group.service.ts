@@ -81,11 +81,6 @@ export class GroupService {
         });
     }
 
-    public async triggerPayout(groupId: string) {
-        // Placeholder for payout logic
-        console.log(`Triggering payout logic for group ${groupId}`);
-    }
-
     public async joinGroup(userId: string, groupId: string) {
         return await prisma.groupMember.create({
             data: {
