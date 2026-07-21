@@ -1,81 +1,94 @@
 {
   "balance": {
-    "no_wallet": "[BALANCE] Error: Wallet not configured.",
-    "success": "[BALANCE] Your balance is {{balance}} XLM."
+    "no_wallet": "[BALANCE] Kuskure: Ba a saita walat ba.",
+    "success": "💰 Kudinku:\n{{balances}}",
+    "asset_not_found": "Baku da layin amincewa na {{asset}}."
   },
   "history": {
-    "fetching": "[HISTORY] Fetching transaction history for {{phone}}..."
+    "fetching": "[HISTORY] Ana kwashe tarihin hada-hadar kudinku domin {{phone}}...",
+    "header": "📜 Tarihin Hada-Hadar Kudi (10 na karshe):\n\n",
+    "item_sent": "{{index}}. ✅ An aika {{amount}} {{asset}} zuwa {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_received": "{{index}}. 📥 An karbi {{amount}} {{asset}} daga {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_other": "{{index}}. 🔄 {{type}} ({{amount}} {{asset}})\n   {{date}} • tx: {{hash}}",
+    "more": "\nAmsa HISTORY MORE domin ganin tsofaffin hada-hadar kudi",
+    "no_more": "\nBabu sauran hada-hadar kudi da za a nuna.",
+    "not_funded": "Babu tarihin hada-hadar kudi — ba a saka kudi a walat dinku ba tukuna",
+    "unavailable": "Tarihin hada-hadar kudi ba ya samuwa a halin yanzu. Don Allah a sake gwadawa anjima.",
+    "no_wallet": "Kuskure: Ba a saita walat din ku ba."
   },
   "profile": {
-    "card": "*Kolo Profile*\nPhone: {{phone}}\nUsername: {{username}}\nWallet: {{wallet}}\nJoined: {{joined}}"
+    "card": "*Bayanan Kolo*\nWaya: {{phone}}\nSunan Mai Amfani: {{username}}\nWalat: {{wallet}}\nAn shiga: {{joined}}"
   },
   "send": {
-    "usage": "Usage: SEND <amount> <@username or phone>",
-    "no_wallet": "Error: Your wallet is not configured.",
-    "no_recipient": "Error: Could not find wallet for user {{target}}.",
-    "initiating": "[SEND] Initiating transfer of {{amount}} XLM to {{target}}...",
-    "success": "✅ Successfully sent {{amount}} XLM to {{target}}!",
-    "failed": "❌ [SEND] Failed: {{message}}"
+    "usage": "Amfani: SEND <adadi> <@sunan_mai_amfani ko waya>",
+    "no_wallet": "Kuskure: Ba a saita walat din ku ba.",
+    "no_recipient": "Kuskure: Ba a iya samun walat din mai amfani {{target}}.",
+    "initiating": "[SEND] Ana farawa tura {{amount}} XLM zuwa {{target}}...",
+    "success": "✅ An yi nasarar tura {{amount}} XLM zuwa {{target}}!",
+    "failed": "❌ [SEND] Bai yi nasara ba: {{message}}"
   },
   "request": {
-    "usage": "Usage: REQUEST <amount> <@username or phone>",
-    "no_user": "Error: Could not find user {{target}}.",
-    "notify_recipient": "🔔 [REQUEST] {{sender}} is requesting {{amount}} XLM from you. Reply with: SEND {{amount}} {{senderPhone}}",
-    "confirmation": "[REQUEST] Request for {{amount}} XLM sent to {{target}}."
+    "usage": "Amfani: REQUEST <adadi> <@sunan_mai_amfani ko waya>",
+    "no_user": "Kuskure: Ba a iya samun mai amfani {{target}}.",
+    "notify_recipient": "🔔 [REQUEST] {{sender}} yana neman {{amount}} XLM daga gare ku. Amsa da: SEND {{amount}} {{senderPhone}}",
+    "confirmation": "[REQUEST] An aika bukatar {{amount}} XLM zuwa {{target}}."
   },
   "create_group": {
-    "usage": "Usage: CREATE GROUP <name> <amount> <frequency>",
-    "success": "✅ Group \"{{name}}\" created!\nGroup ID: {{id}}",
-    "failed": "❌ Failed to create group: {{message}}"
+    "usage": "Amfani: CREATE GROUP <suna> <adadi> <lokaci>",
+    "success": "✅ An kirkiro rukuni \"{{name}}\"!\nLambar Rukuni: {{id}}",
+    "failed": "❌ Ba a yi nasarar kirkiro rukuni ba: {{message}}"
   },
   "join_group": {
-    "usage": "Usage: JOIN GROUP <groupId>",
-    "success": "✅ Successfully joined group!",
-    "failed": "❌ Failed to join group: {{message}}"
+    "usage": "Amfani: JOIN GROUP <groupId>",
+    "success": "✅ An yi nasarar shiga rukuni!",
+    "failed": "❌ Ba a yi nasarar shiga rukuni ba: {{message}}"
   },
   "invite_member": {
-    "usage": "Usage: INVITE MEMBER <@username or phone>",
-    "no_user": "Error: Could not find user {{target}}.",
-    "not_creator": "Error: You are not the creator of any group.",
-    "notify_recipient": "🔔 [INVITE] {{sender}} invited you to join their savings group \"{{groupName}}\".\n\nReply with: JOIN GROUP {{groupId}}",
-    "success": "✅ Invite sent to {{target}}."
+    "usage": "Amfani: INVITE MEMBER <@sunan_mai_amfani ko waya>",
+    "no_user": "Kuskure: Ba a iya samun mai amfani {{target}}.",
+    "not_creator": "Kuskure: Ba kai ne ka kirkiro kowane rukuni ba.",
+    "notify_recipient": "🔔 [INVITE] {{sender}} ya gayyace ka ka shiga rukunin su na ajiya \"{{groupName}}\".\n\nAmsa da: JOIN GROUP {{groupId}}",
+    "success": "✅ An aika gayyata zuwa {{target}}."
   },
   "group_status": {
-    "no_groups": "You are not part of any groups.",
-    "header": "*Your Groups:*\n\n",
-    "entry": "*{{name}}*\nTarget: {{amount}} XLM ({{frequency}})\nRole: {{role}}\nMembers: {{count}}\n\n"
+    "no_groups": "Ba ka cikin kowane rukuni.",
+    "header": "*Rukunin Ku:*\n\n",
+    "entry": "*{{name}}*\nBuri: {{amount}} XLM ({{frequency}})\nMatsayi: {{role}}\nMambobi: {{count}}\n\n"
   },
   "contribute": {
-    "usage": "Usage: CONTRIBUTE <amount>",
-    "no_group": "Error: You are not part of any group.",
-    "amount_mismatch": "❌ Contribution must be exactly {{required}} XLM as required by this group.",
-    "initiating": "[CONTRIBUTE] Initiating contribution of {{amount}} XLM to \"{{groupName}}\"...",
-    "success": "✅ Successfully contributed {{amount}} XLM to \"{{groupName}}\"!",
-    "failed": "❌ Contribution failed: {{message}}"
+    "usage": "Amfani: CONTRIBUTE <adadi>",
+    "no_group": "Kuskure: Ba ka cikin kowane rukuni.",
+    "amount_mismatch": "❌ Dole gudummawa ta zama daidai {{required}} XLM yadda rukunin nan ke bukata.",
+    "initiating": "[CONTRIBUTE] Ana farawa bada gudummawa ta {{amount}} XLM ga \"{{groupName}}\"...",
+    "success": "✅ An yi nasarar bada gudummawar {{amount}} XLM ga \"{{groupName}}\"!",
+    "failed": "❌ Bada gudummawa bai yi nasara ba: {{message}}"
   },
   "validation": {
-    "invalid_format": "❌ Invalid amount format. Please enter a positive number (e.g., 10 or 10.50).",
-    "zero_amount": "❌ Amount must be greater than zero.",
-    "precision_exceeded": "❌ Amount cannot have more than 7 decimal places.",
-    "exceeds_max": "❌ Amount exceeds the maximum allowed (1,000,000 XLM)."
+    "invalid_format": "❌ Tsarin adadi ba daidai bane. Don Allah sa lambar da ta wuce sifili (misali, 10 ko 10.50).",
+    "zero_amount": "❌ Dole adadi ya wuce sifili.",
+    "precision_exceeded": "❌ Ba za a iya samun adadi fiye da maki na 7 bayan ɗigo ba.",
+    "exceeds_max": "❌ Adadin ya wuce yawan da aka yarda da shi (1,000,000 XLM)."
   },
   "withdraw": {
-    "usage": "Usage: WITHDRAW <amount>",
-    "no_group": "Error: You are not part of any group.",
-    "success": "✅ Successfully withdrew {{amount}} XLM from \"{{groupName}}\" pool! (MOCKED)"
+    "usage": "Amfani: WITHDRAW <adadi>",
+    "no_group": "Kuskure: Ba ka cikin kowane rukuni.",
+    "success": "✅ An yi nasarar cire {{amount}} XLM daga asusun \"{{groupName}}\"! (MOCKED)"
   },
   "help": {
-    "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Support_\nHELP\nSUPPORT"
+    "text": "*Umarnin Kolo:*\n\n_Asusu_\nBALANCE\nBALANCE <kadari>\nHISTORY\nPROFILE\n\n_Biyan Kudi_\nSEND <adadi> <@mai_amfani>\nREQUEST <adadi> <@mai_amfani>\n\n_Rukunin Ajiya_\nCREATE GROUP <suna> <adadi> <lokaci>\nJOIN GROUP <groupId>\nINVITE MEMBER <@mai_amfani>\nGROUP STATUS\nCONTRIBUTE <adadi>\nWITHDRAW <adadi>\n\n_Taimako_\nHELP\nSUPPORT"
   },
   "unknown": {
-    "command": "I didn't understand that command. Send HELP to see available commands."
+    "command": "Ban gane wannan umarnin ba. Tura HELP domin ganin umarnin da ake da su."
   },
   "error": {
-    "generic": "An error occurred: {{message}}"
+    "generic": "Wani kuskure ya faru: {{message}}"
   },
   "language": {
-    "current": "Your current language is: {{current}}. Reply with LANGUAGE <yoruba/pidgin/french/hausa/igbo/english> to change it.",
-    "unsupported": "Unsupported language. Please choose from: yoruba, pidgin, french, hausa, igbo, english.",
-    "success": "✅ Language changed successfully!"
+    "current": "Harshenka na yanzu shine: {{current}}. Amsa da LANGUAGE <yoruba/pidgin/french/hausa/igbo/english> domin canza shi.",
+    "unsupported": "Ba a goyan bayan wannan harshen. Don Allah zabi daga: yoruba, pidgin, french, hausa, igbo, english.",
+    "success": "✅ An canza harshe cikin nasara!"
+  },
+  "wallet": {
+    "usdc_trustline_low_reserve": "Kuna buƙatar aƙalla XLM 2 a cikin walat ɗinku don kunna USDC."
   }
 }

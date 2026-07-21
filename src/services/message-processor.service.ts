@@ -3,7 +3,7 @@ import { StellarService } from './stellar.service';
 import { UserService } from './user.service';
 import { GroupService } from './group.service';
 import { decrypt } from '../utils/encryption.util';
-import { t } from './locale.service';
+import { t, isSupportedLanguage } from './locale.service';
 import { redisClient } from '../lib/redis';
 
 export class MessageProcessor {
@@ -119,22 +119,16 @@ export class MessageProcessor {
         // Map common names to codes
         const langMap: Record<string, string> = {
             'english': 'en',
-            'en': 'en',
             'french': 'fr',
-            'fr': 'fr',
             'yoruba': 'yo',
-            'yo': 'yo',
             'pidgin': 'pcm',
-            'pcm': 'pcm',
             'hausa': 'ha',
-            'ha': 'ha',
-            'igbo': 'ig',
-            'ig': 'ig'
+            'igbo': 'ig'
         };
 
-        const targetCode = langMap[requestedLang];
+        const targetCode = langMap[requestedLang] || requestedLang;
         
-        if (!targetCode) {
+        if (!isSupportedLanguage(targetCode)) {
             return await this.whatsappService.sendMessage(from, t('language.unsupported', lang));
         }
 

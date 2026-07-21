@@ -74,7 +74,9 @@ export async function initI18n(): Promise<void> {
             const lang = path.basename(filePath, '.json');
             if (SUPPORTED_LANGUAGES.includes(lang as any)) {
                 console.log(`[i18n] Reloading translations for ${lang}`);
-                i18next.reloadResources(lang);
+                i18next.reloadResources(lang).catch(err => {
+                    console.error(`[i18n] Reload failed for ${lang}`, err);
+                });
             }
         }
     });
@@ -83,9 +85,7 @@ export async function initI18n(): Promise<void> {
 }
 
 export function isRTL(lang: string): boolean {
-    // Treat standard Hausa as LTR, but per requirements we're prepending \u200F for RTL. 
-    // We match 'ha' as requested.
-    return lang === 'ha' || lang === 'ar';
+    return lang === 'ar';
 }
 
 export function t(

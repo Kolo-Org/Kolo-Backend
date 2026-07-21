@@ -22,6 +22,7 @@ jest.mock('@prisma/client', () => {
             findUnique: jest.fn(),
             findFirst: jest.fn(),
             create: jest.fn(),
+            update: jest.fn(),
         },
     };
     return { PrismaClient: jest.fn(() => mPrismaClient) };
@@ -53,6 +54,7 @@ jest.mock('../utils/encryption.util', () => ({
 
 jest.mock('../services/locale.service', () => ({
     t: (key: string) => (key === 'wallet.usdc_trustline_low_reserve' ? 'You need at least 2 XLM in your wallet to enable USDC.' : key),
+    isSupportedLanguage: (lang: string) => ['en', 'fr', 'ha', 'ig', 'pcm', 'yo', 'ar'].includes(lang),
 }));
 
 describe('UserService', () => {
@@ -183,6 +185,49 @@ describe('UserService', () => {
             } finally {
                 consoleSpy.mockRestore();
             }
+        });
+
+        it('should use supported locale if provided', async () => {
+            prismaClientMock.user.findUnique.mockResolvedValueOnce(null);
+            prismaClientMock.user.create.mockResolvedValueOnce({ id: '5', phoneNumber: '3333333333', language: 'fr' });
+
+            await userService.getOrCreateUser('3333333333', 'fr');
+
+            expect(prismaClientMock.user.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({
+                        language: 'fr'
+                    })
+                })
+            );
+        });
+
+        it('should fallback to en if unsupported locale is provided', async () => {
+            prismaClientMock.user.findUnique.mockResolvedValueOnce(null);
+            prismaClientMock.user.create.mockResolvedValueOnce({ id: '6', phoneNumber: '4444444444', language: 'en' });
+
+            await userService.getOrCreateUser('4444444444', 'xyz');
+
+            expect(prismaClientMock.user.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({
+                        language: 'en'
+                    })
+                })
+            );
+        });
+    });
+
+    describe('updateUserLanguage', () => {
+        it('should update user language', async () => {
+            prismaClientMock.user.update.mockResolvedValueOnce({ id: '1', phoneNumber: '1234567890', language: 'fr' });
+
+            await userService.updateUserLanguage('1234567890', 'fr');
+
+            expect(prismaClientMock.user.update).toHaveBeenCalledWith({
+                where: { phoneNumber: '1234567890' },
+                data: { language: 'fr' }
+            });
         });
     });
 

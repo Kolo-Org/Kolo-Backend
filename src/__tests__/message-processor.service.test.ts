@@ -184,9 +184,14 @@ describe('MessageProcessor', () => {
         });
 
         it('should check if sender has a wallet', async () => {
-            mockGetOrCreateUser.mockResolvedValueOnce({ id: 'u1', language: 'en' }).mockResolvedValueOnce({ id: 'u1', language: 'en' });
+            const walletUser = {
+                id: 'u1', phoneNumber: '12345', username: 'john',
+                stellarWallet: JSON.stringify({ publicKey: 'G_PUB', encryptedSecret: 'ENC_SEC', iv: 'IV', authTag: 'TAG' }),
+                createdAt: new Date(), language: 'en'
+            };
+            mockGetOrCreateUser.mockResolvedValueOnce(walletUser).mockResolvedValueOnce(walletUser);
             await processor.processCommand('12345', 'SEND 10 @jane');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.no_wallet'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.initiating'));
         });
 
         it('should check if recipient exists and has a wallet', async () => {

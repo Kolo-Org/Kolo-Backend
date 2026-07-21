@@ -23,7 +23,7 @@
     "@types/supertest": "^7.2.0",
     "axios": "^1.17.0",
     "bullmq": "^5.79.0",
-    "chokidar": "^3.6.0",
+    "chokidar": "^4.0.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",

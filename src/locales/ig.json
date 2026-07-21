@@ -1,81 +1,94 @@
 {
   "balance": {
-    "no_wallet": "[BALANCE] Error: Wallet not configured.",
-    "success": "[BALANCE] Your balance is {{balance}} XLM."
+    "no_wallet": "[BALANCE] Njehie: Ahazibeghị obere akpa gị.",
+    "success": "💰 Ego Gị:\n{{balances}}",
+    "asset_not_found": "Ị nweghị usoro ntụkwasị obi maka {{asset}}."
   },
   "history": {
-    "fetching": "[HISTORY] Fetching transaction history for {{phone}}..."
+    "fetching": "[HISTORY] Na-eweta akụkọ mbufe maka {{phone}}...",
+    "header": "📜 Akụkọ Mbufe (10 ikpeazụ):\n\n",
+    "item_sent": "{{index}}. ✅ Ezigara {{amount}} {{asset}} na {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_received": "{{index}}. 📥 Anatara {{amount}} {{asset}} site na {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_other": "{{index}}. 🔄 {{type}} ({{amount}} {{asset}})\n   {{date}} • tx: {{hash}}",
+    "more": "\nZaghachi HISTORY MORE iji hụ mbufe ochie",
+    "no_more": "\nEnweghị mbufe ndị ọzọ a ga-egosi.",
+    "not_funded": "Enweghị akụkọ mbufe — etinyebeghị ego na obere akpa gị n'oge a",
+    "unavailable": "Akụkọ mbufe adịghị ugbu a. Biko gbalịa ọzọ ma emechaa.",
+    "no_wallet": "Njehie: Ahazibeghị obere akpa gị."
   },
   "profile": {
-    "card": "*Kolo Profile*\nPhone: {{phone}}\nUsername: {{username}}\nWallet: {{wallet}}\nJoined: {{joined}}"
+    "card": "*Purofaịlụ Kolo*\nEkwentị: {{phone}}\nAha ojiji: {{username}}\nObere akpa: {{wallet}}\nO sonyere: {{joined}}"
   },
   "send": {
-    "usage": "Usage: SEND <amount> <@username or phone>",
-    "no_wallet": "Error: Your wallet is not configured.",
-    "no_recipient": "Error: Could not find wallet for user {{target}}.",
-    "initiating": "[SEND] Initiating transfer of {{amount}} XLM to {{target}}...",
-    "success": "✅ Successfully sent {{amount}} XLM to {{target}}!",
-    "failed": "❌ [SEND] Failed: {{message}}"
+    "usage": "Ojiji: SEND <ọnụọgụ> <@aha_ojiji ma ọ bụ ekwentị>",
+    "no_wallet": "Njehie: Ahazibeghị obere akpa gị.",
+    "no_recipient": "Njehie: Ahụghị obere akpa maka onye ọrụ {{target}}.",
+    "initiating": "[SEND] Na-ebido izipu {{amount}} XLM na {{target}}...",
+    "success": "✅ Ezigara {{amount}} XLM na {{target}} nke ọma!",
+    "failed": "❌ [SEND] Ọ daala: {{message}}"
   },
   "request": {
-    "usage": "Usage: REQUEST <amount> <@username or phone>",
-    "no_user": "Error: Could not find user {{target}}.",
-    "notify_recipient": "🔔 [REQUEST] {{sender}} is requesting {{amount}} XLM from you. Reply with: SEND {{amount}} {{senderPhone}}",
-    "confirmation": "[REQUEST] Request for {{amount}} XLM sent to {{target}}."
+    "usage": "Ojiji: REQUEST <ọnụọgụ> <@aha_ojiji ma ọ bụ ekwentị>",
+    "no_user": "Njehie: Ahụghị onye ọrụ {{target}}.",
+    "notify_recipient": "🔔 [REQUEST] {{sender}} na-arịọ {{amount}} XLM n'aka gị. Zaghachi na: SEND {{amount}} {{senderPhone}}",
+    "confirmation": "[REQUEST] Ezigara arịrịọ maka {{amount}} XLM na {{target}}."
   },
   "create_group": {
-    "usage": "Usage: CREATE GROUP <name> <amount> <frequency>",
-    "success": "✅ Group \"{{name}}\" created!\nGroup ID: {{id}}",
-    "failed": "❌ Failed to create group: {{message}}"
+    "usage": "Ojiji: CREATE GROUP <aha> <ọnụọgụ> <oge>",
+    "success": "✅ E mepụtara otu \"{{name}}\"!\nNọmba Otu: {{id}}",
+    "failed": "❌ Ịmepụta otu adaala: {{message}}"
   },
   "join_group": {
-    "usage": "Usage: JOIN GROUP <groupId>",
-    "success": "✅ Successfully joined group!",
-    "failed": "❌ Failed to join group: {{message}}"
+    "usage": "Ojiji: JOIN GROUP <groupId>",
+    "success": "✅ Ị sonyela n'otu ahụ nke ọma!",
+    "failed": "❌ Ịbanye n'otu ahụ adaala: {{message}}"
   },
   "invite_member": {
-    "usage": "Usage: INVITE MEMBER <@username or phone>",
-    "no_user": "Error: Could not find user {{target}}.",
-    "not_creator": "Error: You are not the creator of any group.",
-    "notify_recipient": "🔔 [INVITE] {{sender}} invited you to join their savings group \"{{groupName}}\".\n\nReply with: JOIN GROUP {{groupId}}",
-    "success": "✅ Invite sent to {{target}}."
+    "usage": "Ojiji: INVITE MEMBER <@aha_ojiji ma ọ bụ ekwentị>",
+    "no_user": "Njehie: Ahụghị onye ọrụ {{target}}.",
+    "not_creator": "Njehie: Ọ bụghị gị mepụtara otu ọ bụla.",
+    "notify_recipient": "🔔 [INVITE] {{sender}} kpọrọ gị ka ị sonye n'otu nchekwa ego ha \"{{groupName}}\".\n\nZaghachi na: JOIN GROUP {{groupId}}",
+    "success": "✅ Ezigara ọkpụkpọ na {{target}}."
   },
   "group_status": {
-    "no_groups": "You are not part of any groups.",
-    "header": "*Your Groups:*\n\n",
-    "entry": "*{{name}}*\nTarget: {{amount}} XLM ({{frequency}})\nRole: {{role}}\nMembers: {{count}}\n\n"
+    "no_groups": "Ị nọghị n'otu ọ bụla.",
+    "header": "*Otu Gị Ndị A:*\n\n",
+    "entry": "*{{name}}*\nEbumnuche: {{amount}} XLM ({{frequency}})\nỌrụ: {{role}}\nNdị Otu: {{count}}\n\n"
   },
   "contribute": {
-    "usage": "Usage: CONTRIBUTE <amount>",
-    "no_group": "Error: You are not part of any group.",
-    "amount_mismatch": "❌ Contribution must be exactly {{required}} XLM as required by this group.",
-    "initiating": "[CONTRIBUTE] Initiating contribution of {{amount}} XLM to \"{{groupName}}\"...",
-    "success": "✅ Successfully contributed {{amount}} XLM to \"{{groupName}}\"!",
-    "failed": "❌ Contribution failed: {{message}}"
+    "usage": "Ojiji: CONTRIBUTE <ọnụọgụ>",
+    "no_group": "Njehie: Ị nọghị n'otu ọ bụla.",
+    "amount_mismatch": "❌ Ntinye ụtụ ga-abụ kpọmkwem {{required}} XLM dịka otu a chọrọ.",
+    "initiating": "[CONTRIBUTE] Na-ebido ntinye ụtụ nke {{amount}} XLM na \"{{groupName}}\"...",
+    "success": "✅ Etinyere {{amount}} XLM na \"{{groupName}}\" nke ọma!",
+    "failed": "❌ Ntinye ụtụ adaala: {{message}}"
   },
   "validation": {
-    "invalid_format": "❌ Invalid amount format. Please enter a positive number (e.g., 10 or 10.50).",
-    "zero_amount": "❌ Amount must be greater than zero.",
-    "precision_exceeded": "❌ Amount cannot have more than 7 decimal places.",
-    "exceeds_max": "❌ Amount exceeds the maximum allowed (1,000,000 XLM)."
+    "invalid_format": "❌ Ụdị ọnụọgụ adịghị mma. Biko tinye nọmba karịrị efu (dịka, 10 ma ọ bụ 10.50).",
+    "zero_amount": "❌ Ọnụọgụ ga-akarịrị efu.",
+    "precision_exceeded": "❌ Ọnụọgụ enweghị ike inwe karịa mkpụrụ 7 mgbe akara iri gasịrị.",
+    "exceeds_max": "❌ Ọnụọgụ karịrị nke kachasị anabata (1,000,000 XLM)."
   },
   "withdraw": {
-    "usage": "Usage: WITHDRAW <amount>",
-    "no_group": "Error: You are not part of any group.",
-    "success": "✅ Successfully withdrew {{amount}} XLM from \"{{groupName}}\" pool! (MOCKED)"
+    "usage": "Ojiji: WITHDRAW <ọnụọgụ>",
+    "no_group": "Njehie: Ị nọghị n'otu ọ bụla.",
+    "success": "✅ Ewepụtara {{amount}} XLM na nchekwa \"{{groupName}}\" nke ọma! (MOCKED)"
   },
   "help": {
-    "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Support_\nHELP\nSUPPORT"
+    "text": "*Iwu Kolo:*\n\n_Akaụntụ_\nBALANCE\nBALANCE <akụ>\nHISTORY\nPROFILE\n\n_Ịkwụ Ụgwọ_\nSEND <ọnụọgụ> <@onye_ọrụ>\nREQUEST <ọnụọgụ> <@onye_ọrụ>\n\n_Otu Nchekwa Ego_\nCREATE GROUP <aha> <ọnụọgụ> <oge>\nJOIN GROUP <groupId>\nINVITE MEMBER <@onye_ọrụ>\nGROUP STATUS\nCONTRIBUTE <ọnụọgụ>\nWITHDRAW <ọnụọgụ>\n\n_Nkwado_\nHELP\nSUPPORT"
   },
   "unknown": {
-    "command": "I didn't understand that command. Send HELP to see available commands."
+    "command": "Aghọtaghị m iwu ahụ. Ziga HELP iji hụ iwu ndị dị adị."
   },
   "error": {
-    "generic": "An error occurred: {{message}}"
+    "generic": "Njehie mere: {{message}}"
   },
   "language": {
-    "current": "Your current language is: {{current}}. Reply with LANGUAGE <yoruba/pidgin/french/hausa/igbo/english> to change it.",
-    "unsupported": "Unsupported language. Please choose from: yoruba, pidgin, french, hausa, igbo, english.",
-    "success": "✅ Language changed successfully!"
+    "current": "Asụsụ gị ugbu a bụ: {{current}}. Zaghachi na LANGUAGE <yoruba/pidgin/french/hausa/igbo/english> iji gbanwee ya.",
+    "unsupported": "A naghị akwado asụsụ a. Biko họrọ n'ime: yoruba, pidgin, french, hausa, igbo, english.",
+    "success": "✅ Agbanwela asụsụ ahụ nke ọma!"
+  },
+  "wallet": {
+    "usdc_trustline_low_reserve": "Ị chọrọ opekata mpe 2 XLM na obere akpa gị iji mee ka USDC rụọ ọrụ."
   }
 }

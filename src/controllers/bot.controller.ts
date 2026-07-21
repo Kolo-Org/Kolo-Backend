@@ -51,7 +51,6 @@ export interface IncomingTextMessage {
     from: string;
     msgBody: string;
     whatsappMessageId: string;
-    locale?: string;
 }
 
 export class BotController {
@@ -93,16 +92,7 @@ export class BotController {
             return null;
         }
 
-        // Try to extract locale if available in contacts metadata for this sender (e.g., from WhatsApp profile)
-        let locale: string | undefined;
-        // The locale is sometimes passed via profile metadata, though undocumented.
-        // We capture any locale field if present in the contact matching 'from'
-        const contact = contacts?.find(c => c.wa_id === from);
-        if (contact && (contact as any).profile?.locale) {
-            locale = (contact as any).profile.locale;
-        }
-
-        return { from, msgBody, whatsappMessageId: id, locale };
+        return { from, msgBody, whatsappMessageId: id };
     }
 
     public async handleMessage(req: Request, res: Response) {
@@ -129,7 +119,6 @@ export class BotController {
                 from: message.from,
                 msgBody: message.msgBody,
                 whatsappMessageId: message.whatsappMessageId,
-                locale: message.locale,
             });
         } catch (err) {
             observabilityService.alertCriticalFailure('Failed to enqueue webhook message', err, {
