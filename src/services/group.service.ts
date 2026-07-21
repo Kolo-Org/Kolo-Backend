@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { scheduleGroupCycle, removeGroupCycle } from '../queue/contribution-scheduler.queue';
+import { enqueueContractDeployment } from '../queue/soroban-deployment.queue';
 
 const prisma = new PrismaClient();
 
@@ -33,6 +34,7 @@ export class GroupService {
                 name,
                 contributionAmount: amount,
                 contributionFrequency: frequency,
+                deploymentStatus: 'PENDING',
                 members: {
                     create: {
                         userId: userId,
@@ -43,6 +45,7 @@ export class GroupService {
         });
 
         const jobId = await scheduleGroupCycle(group.id, frequency);
+        await enqueueContractDeployment(group.id);
         
         if (jobId) {
             return await prisma.savingsGroup.update({

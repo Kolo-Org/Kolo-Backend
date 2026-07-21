@@ -18,19 +18,29 @@ model User {
   contributions   Contribution[]
 }
 
+enum DeploymentStatus {
+  PENDING
+  DEPLOYING
+  DEPLOYED
+  FAILED
+}
+
 model SavingsGroup {
-  id                   String         @id @default(uuid())
+  id                   String            @id @default(uuid())
   name                 String
   contributionAmount   Decimal
   contributionFrequency String        // e.g., "WEEKLY", "MONTHLY"
   stellarContractId    String?        // Soroban contract ID once deployed
+  deploymentStatus     DeploymentStatus  @default(PENDING)
+  deploymentError      String?
   currentCycleStart    DateTime?
   currentCycleEnd      DateTime?
   bullMqJobId          String?
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
   members              GroupMember[]
 }
+
 
 model GroupMember {
   id             String        @id @default(uuid())

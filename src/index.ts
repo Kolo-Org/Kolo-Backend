@@ -3,6 +3,7 @@ import { StrKey } from '@stellar/stellar-sdk';
 import botRoutes from './routes/bot.routes';
 import { config } from './config/env';
 import { startWorker } from './workers/message.worker';
+import { startSorobanDeploymentWorker } from './workers/soroban-deployment.worker';
 import { observabilityService } from './services/observability.service';
 
 if (!config.ENCRYPTION_KEY) {
@@ -59,7 +60,9 @@ app.use(errorHandler);
 const server = app.listen(config.PORT, () => {
     observabilityService.logInfo(`Server is listening on port ${config.PORT}`);
     startWorker();
+    startSorobanDeploymentWorker();
 });
+
 
 // Enforce a server-level timeout
 server.setTimeout(30000);
