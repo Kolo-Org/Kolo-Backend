@@ -27,14 +27,28 @@ export interface DeploymentResult {
     latency: number;
 }
 
+/**
+ * Low-level helper for deploying and invoking Soroban contracts.
+ *
+ * This service is intentionally designed to work against the configured
+ * Soroban RPC endpoint and to operate in both testnet and public network modes.
+ */
 export class SorobanService {
     public server: StellarSdk.rpc.Server;
 
+    /**
+     * Create a SorobanService binding to the configured RPC endpoint.
+     *
+     * @param rpcUrl optional override for the Soroban RPC endpoint URL.
+     */
     constructor(rpcUrl?: string) {
         const url = rpcUrl || config.SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org';
         this.server = new StellarSdk.rpc.Server(url);
     }
 
+    /**
+     * Returns the active Stellar network passphrase based on application config.
+     */
     public getNetworkPassphrase(): string {
         return config.STELLAR_NETWORK === 'TESTNET'
             ? StellarSdk.Networks.TESTNET
