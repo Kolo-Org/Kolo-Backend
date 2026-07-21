@@ -9,8 +9,24 @@ jest.mock('../services/locale.service', () => ({
     },
 }));
 
+jest.mock('../lib/redis', () => ({
+    redisClient: {
+        get: jest.fn(),
+        set: jest.fn(),
+        del: jest.fn()
+    }
+}));
+const { redisClient } = require('../lib/redis');
+const mockRedisGet = redisClient.get as jest.Mock;
+const mockRedisSet = redisClient.set as jest.Mock;
+const mockRedisDel = redisClient.del as jest.Mock;
+
+
 const mockSendMessage = jest.fn().mockResolvedValue(true);
-const mockCheckBalance = jest.fn().mockResolvedValue('100.50');
+const mockCheckBalance = jest.fn().mockResolvedValue([
+    { assetCode: 'XLM', issuer: '', balance: '100.50' },
+    { assetCode: 'USDC', issuer: 'G_USDC_ISSUER', balance: '50.00' },
+]);
 const mockSendPayment = jest.fn().mockResolvedValue({ successful: true, hash: 'tx123' });
 const mockDecrypt = jest.fn().mockReturnValue('S_SEC');
 const mockGetOrCreateUser = jest.fn().mockResolvedValue({
@@ -35,8 +51,14 @@ jest.mock('../utils/encryption.util', () => ({
 }));
 
 const mockWhatsAppService = { sendMessage: mockSendMessage };
-const mockStellarService = { checkBalance: mockCheckBalance, sendPayment: mockSendPayment, generateWallet: jest.fn(), fundTestnetAccount: jest.fn() };
-const mockUserService = { getOrCreateUser: mockGetOrCreateUser, resolveUser: mockResolveUser };
+const mockGetTransactionHistory = jest.fn().mockResolvedValue({
+    transactions: [
+        { date: '2026-06-25T00:00:00Z', type: 'payment sent', amount: '10', asset: 'XLM', counterparty: 'G_PUB2', hash: 'HASH123' }
+    ],
+    nextCursor: 'cursor_123'
+});
+const mockStellarService = { getTransactionHistory: mockGetTransactionHistory, checkBalance: mockCheckBalance, sendPayment: mockSendPayment, generateWallet: jest.fn(), fundTestnetAccount: jest.fn() };
+const mockUserService = { getOrCreateUser: mockGetOrCreateUser, resolveUser: mockResolveUser, getUserByPublicKey: jest.fn() };
 const mockGroupService = { createGroup: mockCreateGroup, joinGroup: mockJoinGroup, getGroupStatus: mockGetGroupStatus, addContribution: mockAddContribution };
 
 describe('MessageProcessor', () => {
@@ -58,14 +80,43 @@ describe('MessageProcessor', () => {
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('balance.success'));
         });
 
+        it('should list every asset balance for a bare BALANCE command', async () => {
+            await processor.processCommand('12345', 'BALANCE');
+            const [, message] = mockSendMessage.mock.calls[0];
+            expect(message).toContain('"balances":"XLM: 100.50\\nUSDC: 50.00"');
+        });
+
+        it('should filter to a single asset for BALANCE <asset>', async () => {
+            await processor.processCommand('12345', 'BALANCE USDC');
+            const [, message] = mockSendMessage.mock.calls[0];
+            expect(message).toContain('balance.success');
+            expect(message).toContain('"balances":"USDC: 50.00"');
+        });
+
+        it('should report when the requested asset has no trustline', async () => {
+            await processor.processCommand('12345', 'BALANCE EURC');
+            expect(mockSendMessage).toHaveBeenCalledWith(
+                '12345',
+                expect.stringContaining('balance.asset_not_found'),
+            );
+        });
+
         it('should handle PROFILE command', async () => {
             await processor.processCommand('12345', 'PROFILE');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('profile.card'));
         });
 
-        it('should handle HISTORY command', async () => {
+        it('should handle HISTORY command and show transactions', async () => {
             await processor.processCommand('12345', 'HISTORY');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('history.fetching'));
+            expect(mockGetTransactionHistory).toHaveBeenCalledWith('G_PUB', undefined, 10);
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('history.header'));
+        });
+
+        it('should handle HISTORY MORE command', async () => {
+            mockRedisGet.mockResolvedValueOnce('cursor_123'); // For history cursor
+            await processor.processCommand('12345', 'HISTORY MORE');
+            expect(mockGetTransactionHistory).toHaveBeenCalledWith('G_PUB', 'cursor_123', 10);
+            expect(mockRedisSet).toHaveBeenCalledWith('user_state:12345:history_cursor', 'cursor_123', 'EX', 3600);
         });
 
         it('should handle HELP command', async () => {

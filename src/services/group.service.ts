@@ -1,4 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
+import { scheduleGroupCycle, removeGroupCycle } from '../queue/contribution-scheduler.queue';
 
 const prisma = new PrismaClient();
 
@@ -27,7 +28,7 @@ export class GroupService {
 
     public async createGroup(userId: string, name: string, amount: string | Prisma.Decimal, frequency: string) {
         GroupService.validateAmount(amount);
-        return await prisma.savingsGroup.create({
+        const group = await prisma.savingsGroup.create({
             data: {
                 name,
                 contributionAmount: amount,
@@ -40,6 +41,49 @@ export class GroupService {
                 }
             }
         });
+
+        const jobId = await scheduleGroupCycle(group.id, frequency);
+        
+        if (jobId) {
+            return await prisma.savingsGroup.update({
+                where: { id: group.id },
+                data: { bullMqJobId: jobId }
+            });
+        }
+        
+        return group;
+    }
+
+    public async deleteGroup(groupId: string) {
+        const group = await prisma.savingsGroup.findUnique({ where: { id: groupId } });
+        if (group) {
+            await removeGroupCycle(group.id, group.contributionFrequency);
+            await prisma.savingsGroup.delete({ where: { id: groupId } });
+        }
+    }
+
+    public async updateGroupFrequency(groupId: string, newFrequency: string) {
+        const group = await prisma.savingsGroup.findUnique({ where: { id: groupId } });
+        if (!group) throw new Error('Group not found');
+        
+        // Remove old job
+        await removeGroupCycle(group.id, group.contributionFrequency);
+        
+        // Schedule new job
+        const newJobId = await scheduleGroupCycle(group.id, newFrequency);
+        
+        return await prisma.savingsGroup.update({
+            where: { id: groupId },
+            data: { 
+                contributionFrequency: newFrequency,
+                bullMqJobId: newJobId
+            }
+        });
+    }
+
+    public async triggerPayout(groupId: string) {
+        // Placeholder for payout logic
+        console.log(`Triggering payout logic for group ${groupId}`);
     }
 
     public async joinGroup(userId: string, groupId: string) {

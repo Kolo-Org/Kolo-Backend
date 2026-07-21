@@ -1,7 +1,13 @@
 import { prisma } from '../lib/prisma';
-import { StellarService } from './stellar.service';
+import { StellarService, InsufficientReserveError } from './stellar.service';
+import { WhatsAppService } from './whatsapp.service';
+import { decrypt } from '../utils/encryption.util';
+import { config } from '../config/env';
+import { t } from './locale.service';
+import { redisClient } from '../lib/redis';
 
 const stellarService = new StellarService();
+const whatsappService = new WhatsAppService();
 
 import { isSupportedLanguage } from './locale.service';
 
@@ -18,6 +24,19 @@ export class UserService {
                 await stellarService.fundTestnetAccount(wallet.publicKey);
             } catch (err) {
                 console.error('Failed to fund testnet account:', err);
+            }
+
+            if (config.USDC_ISSUER_PUBLIC_KEY) {
+                try {
+                    const secret = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
+                    await stellarService.createTrustline(secret, 'USDC', config.USDC_ISSUER_PUBLIC_KEY);
+                } catch (err) {
+                    if (err instanceof InsufficientReserveError) {
+                        await whatsappService.sendMessage(phoneNumber, t('wallet.usdc_trustline_low_reserve', 'en'));
+                    } else {
+                        console.error('Failed to create USDC trustline:', err);
+                    }
+                }
             }
 
             const walletData = JSON.stringify({
@@ -54,5 +73,31 @@ export class UserService {
             where: { phoneNumber },
             data: { language }
         });
+    }
+
+    public async getUserByPublicKey(publicKey: string): Promise<any> {
+        const cacheKey = `address_to_username:${publicKey}`;
+        try {
+            const cached = await redisClient.get(cacheKey);
+            if (cached) {
+                return JSON.parse(cached);
+            }
+        } catch (e) {
+            console.error('Redis get error:', e);
+        }
+
+        const user = await prisma.user.findFirst({
+            where: { stellarWallet: { contains: publicKey } },
+            select: { username: true, phoneNumber: true }
+        });
+
+        if (user) {
+            try {
+                await redisClient.set(cacheKey, JSON.stringify(user), 'EX', 3600); // 1 hour TTL
+            } catch (e) {
+                console.error('Redis set error:', e);
+            }
+        }
+        return user;
     }
 }

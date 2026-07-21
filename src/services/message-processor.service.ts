@@ -4,6 +4,7 @@ import { UserService } from './user.service';
 import { GroupService } from './group.service';
 import { decrypt } from '../utils/encryption.util';
 import { t } from './locale.service';
+import { redisClient } from '../lib/redis';
 
 export class MessageProcessor {
     private whatsappService: WhatsAppService;
@@ -76,9 +77,9 @@ export class MessageProcessor {
                 case 'LANGUAGE':
                     return await this.handleLanguage(from, tokens.slice(1));
                 case 'BALANCE':
-                    return await this.handleBalance(from);
+                    return await this.handleBalance(from, tokens.slice(1));
                 case 'HISTORY':
-                    return await this.handleHistory(from);
+                    return await this.handleHistory(from, tokens.slice(1));
                 case 'PROFILE':
                     return await this.handleProfile(from);
                 case 'SEND':
@@ -141,7 +142,7 @@ export class MessageProcessor {
         return await this.whatsappService.sendMessage(from, t('language.success', targetCode));
     }
 
-    private async handleBalance(from: string) {
+    private async handleBalance(from: string, args: string[] = []) {
         const user = await this.userService.getOrCreateUser(from);
         const lang = user.language ?? 'en';
 
@@ -149,16 +150,111 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, t('balance.no_wallet', lang));
         }
         const { publicKey } = JSON.parse(user.stellarWallet);
-        const balance = await this.stellarService.checkBalance(publicKey);
-        await this.whatsappService.sendMessage(from, t('balance.success', lang, { balance }));
+        const balances = await this.stellarService.checkBalance(publicKey);
+
+        const assetFilter = args[0]?.toUpperCase();
+        const shown = assetFilter ? balances.filter((b) => b.assetCode === assetFilter) : balances;
+
+        if (assetFilter && shown.length === 0) {
+            return await this.whatsappService.sendMessage(
+                from,
+                t('balance.asset_not_found', lang, { asset: assetFilter }),
+            );
+        }
+
+        const balanceLines = shown.map((b) => `${b.assetCode}: ${b.balance}`).join('\n');
+        await this.whatsappService.sendMessage(from, t('balance.success', lang, { balances: balanceLines }));
     }
 
-    private async handleHistory(from: string) {
+    private async handleHistory(from: string, args: string[]) {
         const user = await this.userService.getOrCreateUser(from);
-        await this.whatsappService.sendMessage(
-            from,
-            t('history.fetching', user.language ?? 'en', { phone: from }),
-        );
+        const lang = user.language ?? 'en';
+
+        if (!user.stellarWallet) {
+            return await this.whatsappService.sendMessage(from, t('history.no_wallet', lang));
+        }
+
+        const isMore = args.length > 0 && args[0].toUpperCase() === 'MORE';
+        let cursor = undefined;
+
+        const cursorCacheKey = `user_state:${from}:history_cursor`;
+        if (isMore) {
+            const savedCursor = await redisClient.get(cursorCacheKey);
+            if (savedCursor) {
+                cursor = savedCursor;
+            } else {
+                return await this.whatsappService.sendMessage(from, t('history.no_more', lang));
+            }
+        }
+
+        await this.whatsappService.sendMessage(from, t('history.fetching', lang, { phone: from }));
+
+        const { publicKey } = JSON.parse(user.stellarWallet);
+
+        try {
+            const history = await this.stellarService.getTransactionHistory(publicKey, cursor, 10);
+            
+            if (history.transactions.length === 0) {
+                if (isMore) {
+                    await redisClient.del(cursorCacheKey);
+                    return await this.whatsappService.sendMessage(from, t('history.no_more', lang));
+                } else {
+                    return await this.whatsappService.sendMessage(from, t('history.not_funded', lang));
+                }
+            }
+
+            let message = t('history.header', lang);
+            let index = 1;
+
+            for (const tx of history.transactions) {
+                let displayCounterparty = tx.counterparty;
+                
+                // Attempt to resolve Kolo username if it's a stellar public key
+                if (tx.counterparty && tx.counterparty.startsWith('G') && tx.counterparty.length === 56) {
+                    const counterpartyUser = await this.userService.getUserByPublicKey(tx.counterparty);
+                    if (counterpartyUser && counterpartyUser.username) {
+                        displayCounterparty = '@' + counterpartyUser.username;
+                    } else {
+                        // Shorten address if not found or no username
+                        displayCounterparty = tx.counterparty.substring(0, 5) + '...' + tx.counterparty.substring(52);
+                    }
+                }
+
+                const dateStr = new Date(tx.date).toLocaleDateString(lang, { month: 'short', day: 'numeric', year: 'numeric' });
+                const shortHash = tx.hash.substring(0, 5) + '...' + tx.hash.substring(52);
+
+                if (tx.type === 'payment sent') {
+                    message += t('history.item_sent', lang, {
+                        index, amount: tx.amount, asset: tx.asset, counterparty: displayCounterparty, date: dateStr, hash: shortHash
+                    });
+                } else if (tx.type === 'payment received') {
+                    message += t('history.item_received', lang, {
+                        index, amount: tx.amount, asset: tx.asset, counterparty: displayCounterparty, date: dateStr, hash: shortHash
+                    });
+                } else {
+                    message += t('history.item_other', lang, {
+                        index, type: tx.type, amount: tx.amount, asset: tx.asset, date: dateStr, hash: shortHash
+                    });
+                }
+                message += '\n';
+                index++;
+            }
+
+            if (history.nextCursor) {
+                message += t('history.more', lang);
+                await redisClient.set(cursorCacheKey, history.nextCursor, 'EX', 3600); // 1 hour TTL
+            } else {
+                await redisClient.del(cursorCacheKey);
+            }
+
+            await this.whatsappService.sendMessage(from, message.trim());
+        } catch (error: any) {
+            console.error('History error:', error);
+            await this.whatsappService.sendMessage(
+                from,
+                error.message || t('history.unavailable', lang)
+            );
+        }
     }
 
     private async handleProfile(from: string) {

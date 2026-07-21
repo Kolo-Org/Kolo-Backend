@@ -1,4 +1,4 @@
-import { StellarService } from '../services/stellar.service';
+import { StellarService, InsufficientReserveError } from '../services/stellar.service';
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { config } from '../config/env';
 import { decrypt } from '../utils/encryption.util';
@@ -9,6 +9,23 @@ const mServer = {
     fetchBaseFee: jest.fn().mockResolvedValue(100),
     submitTransaction: jest.fn().mockResolvedValue({ successful: true, hash: 'mock_tx_hash' })
 };
+
+jest.mock('../lib/redis', () => ({
+    redisClient: {
+        get: jest.fn(),
+        set: jest.fn(),
+        del: jest.fn(),
+        keys: jest.fn().mockResolvedValue([]),
+        scan: jest.fn()
+    }
+}));
+const { redisClient } = require('../lib/redis');
+const mockRedisGet = redisClient.get as jest.Mock;
+const mockRedisSet = redisClient.set as jest.Mock;
+const mockRedisDel = redisClient.del as jest.Mock;
+const mockRedisKeys = redisClient.keys as jest.Mock;
+const mockRedisScan = redisClient.scan as jest.Mock;
+mockRedisScan.mockResolvedValue(['0', []]);
 
 jest.mock('@stellar/stellar-sdk', () => {
     const originalModule = jest.requireActual('@stellar/stellar-sdk');
@@ -34,7 +51,10 @@ jest.mock('@stellar/stellar-sdk', () => {
             fromSecret: jest.fn().mockReturnValue(mKeypair),
             random: jest.fn().mockReturnValue(mKeypair)
         },
-        Operation: { payment: jest.fn().mockReturnValue({}) }
+        Operation: {
+            payment: jest.fn().mockReturnValue({}),
+            changeTrust: jest.fn().mockReturnValue({}),
+        },
     };
 });
 
@@ -60,6 +80,7 @@ describe('StellarService', () => {
         jest.clearAllMocks();
         config.STELLAR_NETWORK = originalNetwork;
         stellarService = new StellarService();
+        mockRedisKeys.mockResolvedValue([]);
     });
 
     describe('generateWallet', () => {
@@ -117,31 +138,88 @@ describe('StellarService', () => {
     });
 
     describe('checkBalance', () => {
-        it('should return native balance', async () => {
-            const balance = await stellarService.checkBalance('G_MOCK');
-            expect(balance).toBe('100.50');
+        it('should return the native balance as XLM', async () => {
+            const balances = await stellarService.checkBalance('G_MOCK');
+            expect(balances).toEqual([{ assetCode: 'XLM', issuer: '', balance: '100.50' }]);
         });
 
-        it('should return zero when no native balance is present', async () => {
+        it('should return issued assets alongside the native balance', async () => {
             mServer.loadAccount.mockResolvedValueOnce({
-                balances: [{ asset_type: 'credit_alphanum4', balance: '17.25' }],
+                balances: [
+                    { asset_type: 'native', balance: '100.50' },
+                    { asset_type: 'credit_alphanum4', asset_code: 'USDC', asset_issuer: 'G_USDC_ISSUER', balance: '50.00' },
+                ],
             });
 
-            const balance = await stellarService.checkBalance('G_MOCK');
-            expect(balance).toBe('0');
+            const balances = await stellarService.checkBalance('G_MOCK');
+            expect(balances).toEqual([
+                { assetCode: 'XLM', issuer: '', balance: '100.50' },
+                { assetCode: 'USDC', issuer: 'G_USDC_ISSUER', balance: '50.00' },
+            ]);
         });
 
-        it('should return a safe error message when the account lookup fails', async () => {
+        it('should return an empty array when the account lookup fails', async () => {
             mServer.loadAccount.mockRejectedValueOnce(new Error('network unavailable'));
             const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
             try {
-                const balance = await stellarService.checkBalance('G_MOCK');
-                expect(balance).toBe('Error checking balance or account not funded.');
+                const balances = await stellarService.checkBalance('G_MOCK');
+                expect(balances).toEqual([]);
                 expect(consoleSpy).toHaveBeenCalledWith('Error checking balance:', expect.any(Error));
             } finally {
                 consoleSpy.mockRestore();
             }
+        });
+    });
+
+    describe('createTrustline', () => {
+        const issuer = 'GA5SUFR3QFFS6UJWJA3YMMLWQ56J3WGUOJ672JH4L6FBW6DYOHAXNHIC';
+
+        it('should submit a changeTrust transaction when no trustline exists', async () => {
+            await stellarService.createTrustline('S_MOCK', 'USDC', issuer);
+
+            expect(StellarSdk.Operation.changeTrust).toHaveBeenCalledWith({
+                asset: expect.any(StellarSdk.Asset),
+            });
+            expect(mServer.submitTransaction).toHaveBeenCalled();
+        });
+
+        it('should be a no-op when the trustline already exists', async () => {
+            mServer.loadAccount.mockResolvedValueOnce({
+                balances: [
+                    { asset_type: 'native', balance: '100.50' },
+                    { asset_type: 'credit_alphanum4', asset_code: 'USDC', asset_issuer: issuer, balance: '0' },
+                ],
+            });
+
+            await stellarService.createTrustline('S_MOCK', 'USDC', issuer);
+
+            expect(StellarSdk.Operation.changeTrust).not.toHaveBeenCalled();
+            expect(mServer.submitTransaction).not.toHaveBeenCalled();
+        });
+
+        it('should throw InsufficientReserveError when Horizon rejects for low reserve', async () => {
+            mServer.submitTransaction.mockRejectedValueOnce({
+                response: { data: { extras: { result_codes: { operations: ['op_low_reserve'] } } } },
+            });
+
+            await expect(stellarService.createTrustline('S_MOCK', 'USDC', issuer)).rejects.toThrow(
+                InsufficientReserveError,
+            );
+        });
+
+        it('should throw InsufficientReserveError when the account does not exist yet', async () => {
+            mServer.loadAccount.mockRejectedValueOnce({ response: { status: 404 } });
+
+            await expect(stellarService.createTrustline('S_MOCK', 'USDC', issuer)).rejects.toThrow(
+                InsufficientReserveError,
+            );
+        });
+
+        it('should rethrow unrelated submission errors', async () => {
+            mServer.submitTransaction.mockRejectedValueOnce(new Error('boom'));
+
+            await expect(stellarService.createTrustline('S_MOCK', 'USDC', issuer)).rejects.toThrow('boom');
         });
     });
 
@@ -166,6 +244,67 @@ describe('StellarService', () => {
                     networkPassphrase: StellarSdk.Networks.PUBLIC,
                 }),
             );
+        });
+
+        it('should invalidate redis cache after sendPayment', async () => {
+            mockRedisScan.mockResolvedValueOnce(['0', ['tx_history:G_MOCK:page:1']]);
+            mockRedisScan.mockResolvedValueOnce(['0', ['tx_history:GBBM6BKZPEHWPI3VK3VNKEJEXTMIGNNCE2ZEXSVEEKSJNDYTK2E4QUDE:page:1']]);
+            const validPublicKey = 'GBBM6BKZPEHWPI3VK3VNKEJEXTMIGNNCE2ZEXSVEEKSJNDYTK2E4QUDE';
+            await stellarService.sendPayment('S_MOCK', validPublicKey, '10.0');
+            expect(mockRedisDel).toHaveBeenCalledWith('tx_history:G_MOCK:page:1');
+        });
+    });
+
+    describe('getTransactionHistory', () => {
+        const mockOpCall = jest.fn();
+        const mockTxCall = jest.fn();
+        const mockCursor = jest.fn().mockReturnThis();
+        const mockLimit = jest.fn().mockReturnThis();
+        const mockOrder = jest.fn().mockReturnThis();
+        const mockForAccount = jest.fn().mockReturnThis();
+
+        beforeAll(() => {
+            (mServer as any).transactions = jest.fn().mockReturnValue({
+                forAccount: mockForAccount,
+                order: mockOrder,
+                limit: mockLimit,
+                cursor: mockCursor,
+                call: mockTxCall
+            });
+        });
+
+        it('should return cached result if available', async () => {
+            mockRedisGet.mockResolvedValue(JSON.stringify({ transactions: [], nextCursor: null }));
+            const result = await stellarService.getTransactionHistory('G_MOCK');
+            expect(result.transactions).toEqual([]);
+            expect(mockTxCall).not.toHaveBeenCalled();
+        });
+
+        it('should fetch from horizon if not cached and cache the result', async () => {
+            mockRedisGet.mockResolvedValue(null);
+            mockTxCall.mockResolvedValue({
+                records: [{
+                    id: 'tx1',
+                    created_at: '2026-06-25T00:00:00Z',
+                    hash: 'HASH123',
+                    operations: jest.fn().mockResolvedValue({
+                        records: [{ type: 'payment', amount: '10.0', asset_type: 'native', from: 'G_OTHER', to: 'G_MOCK' }]
+                    })
+                }]
+            });
+            const result = await stellarService.getTransactionHistory('G_MOCK');
+            expect(result.transactions.length).toBe(1);
+            expect(result.transactions[0].type).toBe('payment received');
+            expect(result.transactions[0].amount).toBe('10.0');
+            expect(result.transactions[0].asset).toBe('XLM');
+            expect(result.transactions[0].counterparty).toBe('G_OTHER');
+            expect(mockRedisSet).toHaveBeenCalledWith('tx_history:G_MOCK:page:1', expect.any(String), 'EX', 300);
+        });
+
+        it('should return 404 formatted error if wallet not funded', async () => {
+            mockRedisGet.mockResolvedValue(null);
+            mockTxCall.mockRejectedValue({ response: { status: 404 } });
+            await expect(stellarService.getTransactionHistory('G_MOCK')).rejects.toThrow(/funded yet/);
         });
     });
 });
