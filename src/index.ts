@@ -9,6 +9,10 @@ if (!config.ENCRYPTION_KEY) {
     throw new Error('ENCRYPTION_KEY environment variable is required');
 }
 
+if (!config.WHATSAPP_APP_SECRET) {
+    throw new Error('WHATSAPP_APP_SECRET environment variable is required');
+}
+
 if (config.USDC_ISSUER_PUBLIC_KEY && !StrKey.isValidEd25519PublicKey(config.USDC_ISSUER_PUBLIC_KEY)) {
     throw new Error('USDC_ISSUER_PUBLIC_KEY is set but is not a valid Stellar public key');
 }
@@ -32,9 +36,10 @@ process.on('uncaughtException', (err) => {
 const app = express();
 
 app.use(express.json({
+    limit: '1mb',
     verify: (req: any, res, buf) => {
         req.rawBody = buf;
-    }
+    },
 }));
 
 app.use('/api', botRoutes);
