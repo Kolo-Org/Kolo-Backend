@@ -26,7 +26,6 @@ export async function initI18n(): Promise<void> {
         .init({
             lng: 'en',
             fallbackLng: 'en',
-            preload: [...SUPPORTED_LANGUAGES],
             backend: {
                 loadPath: path.join(localesDir, '{{lng}}.json'),
             },
@@ -140,4 +139,14 @@ export function t(
  */
 export function isSupportedLanguage(lang: string): lang is SupportedLanguage {
     return SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage);
+}
+
+/**
+ * Ensures the given language is loaded into i18next asynchronously.
+ * Useful for lazy-loading locales on demand instead of preloading all at startup.
+ */
+export async function loadLocale(lang: string): Promise<void> {
+    if (isSupportedLanguage(lang)) {
+        await i18next.loadLanguages(lang);
+    }
 }

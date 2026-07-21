@@ -3,7 +3,7 @@ import { StellarService } from './stellar.service';
 import { UserService } from './user.service';
 import { GroupService } from './group.service';
 import { decrypt } from '../utils/encryption.util';
-import { t, isSupportedLanguage } from './locale.service';
+import { t, isSupportedLanguage, loadLocale } from './locale.service';
 import { redisClient } from '../lib/redis';
 
 export class MessageProcessor {
@@ -57,7 +57,14 @@ export class MessageProcessor {
         if (tokens.length === 0) return;
 
         // Ensure user is created/fetched with locale early on
-        await this.userService.getOrCreateUser(from, locale).catch(e => console.error('Failed early user creation', e));
+        const user = await this.userService.getOrCreateUser(from, locale).catch(e => {
+            console.error('Failed early user creation', e);
+            return null;
+        });
+
+        if (user && user.language) {
+            await loadLocale(user.language);
+        }
 
         const cmd1 = tokens[0].toUpperCase();
         const cmd2 = tokens.length > 1 ? tokens[1].toUpperCase() : '';
@@ -133,6 +140,7 @@ export class MessageProcessor {
         }
 
         await this.userService.updateUserLanguage(from, targetCode);
+        await loadLocale(targetCode);
         return await this.whatsappService.sendMessage(from, t('language.success', targetCode));
     }
 

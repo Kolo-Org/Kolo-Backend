@@ -55,6 +55,7 @@ jest.mock('../utils/encryption.util', () => ({
 jest.mock('../services/locale.service', () => ({
     t: (key: string) => (key === 'wallet.usdc_trustline_low_reserve' ? 'You need at least 2 XLM in your wallet to enable USDC.' : key),
     isSupportedLanguage: (lang: string) => ['en', 'fr', 'ha', 'ig', 'pcm', 'yo', 'ar'].includes(lang),
+    loadLocale: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe('UserService', () => {

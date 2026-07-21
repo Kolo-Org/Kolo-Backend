@@ -59,37 +59,42 @@ describe('locale.service', () => {
 
     describe('t — French', () => {
         it('should return French for balance.success', async () => {
-            const { initI18n, t } = await import('../services/locale.service');
+            const { initI18n, t, loadLocale } = await import('../services/locale.service');
             await initI18n();
+            await loadLocale('fr');
             const result = t('balance.success', 'fr', { balances: 'XLM: 10' });
             expect(result).toContain('Soldes');
             expect(result).toContain('XLM: 10');
         });
 
         it('should return French for unknown.command', async () => {
-            const { initI18n, t } = await import('../services/locale.service');
+            const { initI18n, t, loadLocale } = await import('../services/locale.service');
             await initI18n();
+            await loadLocale('fr');
             expect(t('unknown.command', 'fr')).toContain('compris');
         });
 
         it('should return French for help.text', async () => {
-            const { initI18n, t } = await import('../services/locale.service');
+            const { initI18n, t, loadLocale } = await import('../services/locale.service');
             await initI18n();
+            await loadLocale('fr');
             expect(t('help.text', 'fr')).toContain('Commandes Kolo');
         });
     });
 
     describe('t — Yoruba', () => {
         it('should return Yoruba for balance.success', async () => {
-            const { initI18n, t } = await import('../services/locale.service');
+            const { initI18n, t, loadLocale } = await import('../services/locale.service');
             await initI18n();
+            await loadLocale('yo');
             const result = t('balance.success', 'yo', { balances: 'XLM: 5' });
             expect(result).toContain('XLM');
         });
 
         it('should return Yoruba for help.text', async () => {
-            const { initI18n, t } = await import('../services/locale.service');
+            const { initI18n, t, loadLocale } = await import('../services/locale.service');
             await initI18n();
+            await loadLocale('yo');
             expect(t('help.text', 'yo')).toContain('Kolo');
         });
     });

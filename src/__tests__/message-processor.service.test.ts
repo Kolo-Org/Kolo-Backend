@@ -7,6 +7,7 @@ jest.mock('../services/locale.service', () => ({
         const paramStr = params ? '|' + JSON.stringify(params) : '';
         return `${key}${paramStr}`;
     },
+    loadLocale: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../lib/redis', () => ({
