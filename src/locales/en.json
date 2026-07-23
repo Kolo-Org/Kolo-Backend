@@ -55,6 +55,24 @@
     "header": "*Your Groups:*\n\n",
     "entry": "*{{name}}*\nTarget: {{amount}} XLM ({{frequency}})\nRole: {{role}}\nMembers: {{count}}\n\n"
   },
+  "payout": {
+    "usage": "Usage: PAYOUT <ORDER|STATUS|WAIT|PROCEED|SKIP>",
+    "no_group": "Error: You are not part of any group.",
+    "not_creator": "Error: You are not the creator of any group.",
+    "order_usage": "Usage: PAYOUT ORDER <@user1> <@user2> ... (list every member exactly once)",
+    "order_success": "✅ Payout order updated.",
+    "order_failed": "❌ Failed to update payout order: {{message}}",
+    "order_invalid_member": "Error: Could not find user {{target}}.",
+    "status": "*Payout Rotation for {{name}}*\nCycle: {{cycle}}\nNext up: {{next}}\n\n{{order}}",
+    "wait_success": "⏳ Deadline extended by 24 hours.",
+    "wait_failed": "❌ Could not extend deadline: {{message}}",
+    "proceed_success": "✅ Payout processed with the partial pool.",
+    "proceed_failed": "❌ Could not process payout: {{message}}",
+    "skip_usage": "Usage: PAYOUT SKIP <@username or phone>",
+    "skip_success": "✅ {{target}} has been moved to the back of the rotation.",
+    "skip_failed": "❌ Could not skip member: {{message}}",
+    "skip_no_user": "Error: Could not find user {{target}}."
+  },
   "contribute": {
     "usage": "Usage: CONTRIBUTE <amount>",
     "no_group": "Error: You are not part of any group.",
@@ -75,13 +93,18 @@
     "success": "✅ Successfully withdrew {{amount}} XLM from \"{{groupName}}\" pool! (MOCKED)"
   },
   "help": {
-    "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Support_\nHELP\nSUPPORT"
+    "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Payout Rotation_\nPAYOUT ORDER <@user1> <@user2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@user>\n\n_Support_\nHELP\nSUPPORT"
   },
   "unknown": {
     "command": "I didn't understand that command. Send HELP to see available commands."
   },
   "error": {
     "generic": "An error occurred: {{message}}"
+  },
+  "language": {
+    "current": "Your current language is: {{current}}. Reply with LANGUAGE <yoruba/pidgin/french/hausa/igbo/english> to change it.",
+    "unsupported": "Unsupported language. Please choose from: yoruba, pidgin, french, hausa, igbo, english.",
+    "success": "✅ Language changed successfully!"
   },
   "wallet": {
     "usdc_trustline_low_reserve": "You need at least 2 XLM in your wallet to enable USDC."

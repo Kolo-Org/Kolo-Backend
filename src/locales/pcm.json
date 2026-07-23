@@ -1,0 +1,112 @@
+{
+  "balance": {
+    "no_wallet": "[BALANCE] Error: You never setup your wallet.",
+    "success": "💰 Wetin dey your account:\n{{balances}}",
+    "asset_not_found": "You no get trustline for {{asset}}."
+  },
+  "history": {
+    "fetching": "[HISTORY] We dey find your transaction history for {{phone}}...",
+    "header": "📜 Your Transactions (Last 10):\n\n",
+    "item_sent": "{{index}}. ✅ You send {{amount}} {{asset}} go {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_received": "{{index}}. 📥 You collect {{amount}} {{asset}} from {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_other": "{{index}}. 🔄 {{type}} ({{amount}} {{asset}})\n   {{date}} • tx: {{hash}}",
+    "more": "\nReply HISTORY MORE to see older transactions",
+    "no_more": "\nNo more transactions to show.",
+    "not_funded": "No transaction history — your wallet never collect money yet",
+    "unavailable": "Transaction history no dey available right now. Abeg try again later.",
+    "no_wallet": "Error: You never setup your wallet."
+  },
+  "profile": {
+    "card": "*Kolo Profile*\nPhone: {{phone}}\nUsername: {{username}}\nWallet: {{wallet}}\nJoined: {{joined}}"
+  },
+  "send": {
+    "usage": "How to use: SEND <amount> <@username or phone>",
+    "no_wallet": "Error: You never setup your wallet.",
+    "no_recipient": "Error: We no see wallet for {{target}}.",
+    "initiating": "[SEND] We dey try send {{amount}} XLM go {{target}}...",
+    "success": "✅ You don successfully send {{amount}} XLM go {{target}}!",
+    "failed": "❌ [SEND] E fail: {{message}}"
+  },
+  "request": {
+    "usage": "How to use: REQUEST <amount> <@username or phone>",
+    "no_user": "Error: We no find user {{target}}.",
+    "notify_recipient": "🔔 [REQUEST] {{sender}} dey ask you for {{amount}} XLM. Reply with: SEND {{amount}} {{senderPhone}}",
+    "confirmation": "[REQUEST] We don send request for {{amount}} XLM go {{target}}."
+  },
+  "create_group": {
+    "usage": "How to use: CREATE GROUP <name> <amount> <frequency>",
+    "success": "✅ Group \"{{name}}\" don ready!\nGroup ID: {{id}}",
+    "failed": "❌ We no fit create group: {{message}}"
+  },
+  "join_group": {
+    "usage": "How to use: JOIN GROUP <groupId>",
+    "success": "✅ You don successfully join group!",
+    "failed": "❌ E fail to join group: {{message}}"
+  },
+  "invite_member": {
+    "usage": "How to use: INVITE MEMBER <@username or phone>",
+    "no_user": "Error: We no find user {{target}}.",
+    "not_creator": "Error: You never create any group.",
+    "notify_recipient": "🔔 [INVITE] {{sender}} don invite you make you join their ajo \"{{groupName}}\".\n\nReply with: JOIN GROUP {{groupId}}",
+    "success": "✅ We don send invite go {{target}}."
+  },
+  "group_status": {
+    "no_groups": "You no dey any group.",
+    "header": "*Your Groups:*\n\n",
+    "entry": "*{{name}}*\nTarget: {{amount}} XLM ({{frequency}})\nRole: {{role}}\nMembers: {{count}}\n\n"
+  },
+  "payout": {
+    "usage": "How to use: PAYOUT <ORDER|STATUS|WAIT|PROCEED|SKIP>",
+    "no_group": "Error: You no dey any group.",
+    "not_creator": "Error: You never create any group.",
+    "order_usage": "How to use: PAYOUT ORDER <@user1> <@user2> ... (list every member one time)",
+    "order_success": "✅ Payout order don update.",
+    "order_failed": "❌ We no fit update payout order: {{message}}",
+    "order_invalid_member": "Error: We no find user {{target}}.",
+    "status": "*Payout Rotation for {{name}}*\nCycle: {{cycle}}\nNext person: {{next}}\n\n{{order}}",
+    "wait_success": "⏳ Deadline don extend by 24 hours.",
+    "wait_failed": "❌ We no fit extend deadline: {{message}}",
+    "proceed_success": "✅ We don process payout with the money wey dey available.",
+    "proceed_failed": "❌ We no fit process payout: {{message}}",
+    "skip_usage": "How to use: PAYOUT SKIP <@username or phone>",
+    "skip_success": "✅ {{target}} don move go back of the line.",
+    "skip_failed": "❌ We no fit skip member: {{message}}",
+    "skip_no_user": "Error: We no find user {{target}}."
+  },
+  "contribute": {
+    "usage": "How to use: CONTRIBUTE <amount>",
+    "no_group": "Error: You no dey any group.",
+    "amount_mismatch": "❌ Contribution must be exactly {{required}} XLM as the group require.",
+    "initiating": "[CONTRIBUTE] We dey try contribute {{amount}} XLM go \"{{groupName}}\"...",
+    "success": "✅ You don successfully contribute {{amount}} XLM go \"{{groupName}}\"!",
+    "failed": "❌ Contribution fail: {{message}}"
+  },
+  "validation": {
+    "invalid_format": "❌ Invalid amount format. Abeg enter positive number (e.g., 10 or 10.50).",
+    "zero_amount": "❌ Amount must be greater than zero.",
+    "precision_exceeded": "❌ Amount no fit pass 7 decimal places.",
+    "exceeds_max": "❌ Amount don pass the maximum wey we allow (1,000,000 XLM)."
+  },
+  "withdraw": {
+    "usage": "How to use: WITHDRAW <amount>",
+    "no_group": "Error: You no dey any group.",
+    "success": "✅ You don successfully withdraw {{amount}} XLM from \"{{groupName}}\"! (MOCKED)"
+  },
+  "help": {
+    "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Payout Rotation_\nPAYOUT ORDER <@user1> <@user2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@user>\n\n_Support_\nHELP\nSUPPORT"
+  },
+  "unknown": {
+    "command": "I no understand that command. Send HELP to see commands wey dey work."
+  },
+  "error": {
+    "generic": "Error don happen: {{message}}"
+  },
+  "language": {
+    "current": "Your current language na: {{current}}. Reply with LANGUAGE <yoruba/pidgin/french/hausa/igbo/english> to change am.",
+    "unsupported": "We no support this language. Abeg choose from: yoruba, pidgin, french, hausa, igbo, english.",
+    "success": "✅ You don change language successfully!"
+  },
+  "wallet": {
+    "usdc_trustline_low_reserve": "You need at least 2 XLM for your wallet make you fit use USDC."
+  }
+}

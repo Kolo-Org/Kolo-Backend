@@ -1,0 +1,112 @@
+{
+  "balance": {
+    "no_wallet": "[BALANCE] Kuskure: Ba a saita walat ba.",
+    "success": "💰 Kudinku:\n{{balances}}",
+    "asset_not_found": "Baku da layin amincewa na {{asset}}."
+  },
+  "history": {
+    "fetching": "[HISTORY] Ana kwashe tarihin hada-hadar kudinku domin {{phone}}...",
+    "header": "📜 Tarihin Hada-Hadar Kudi (10 na karshe):\n\n",
+    "item_sent": "{{index}}. ✅ An aika {{amount}} {{asset}} zuwa {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_received": "{{index}}. 📥 An karbi {{amount}} {{asset}} daga {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_other": "{{index}}. 🔄 {{type}} ({{amount}} {{asset}})\n   {{date}} • tx: {{hash}}",
+    "more": "\nAmsa HISTORY MORE domin ganin tsofaffin hada-hadar kudi",
+    "no_more": "\nBabu sauran hada-hadar kudi da za a nuna.",
+    "not_funded": "Babu tarihin hada-hadar kudi — ba a saka kudi a walat dinku ba tukuna",
+    "unavailable": "Tarihin hada-hadar kudi ba ya samuwa a halin yanzu. Don Allah a sake gwadawa anjima.",
+    "no_wallet": "Kuskure: Ba a saita walat din ku ba."
+  },
+  "profile": {
+    "card": "*Bayanan Kolo*\nWaya: {{phone}}\nSunan Mai Amfani: {{username}}\nWalat: {{wallet}}\nAn shiga: {{joined}}"
+  },
+  "send": {
+    "usage": "Amfani: SEND <adadi> <@sunan_mai_amfani ko waya>",
+    "no_wallet": "Kuskure: Ba a saita walat din ku ba.",
+    "no_recipient": "Kuskure: Ba a iya samun walat din mai amfani {{target}}.",
+    "initiating": "[SEND] Ana farawa tura {{amount}} XLM zuwa {{target}}...",
+    "success": "✅ An yi nasarar tura {{amount}} XLM zuwa {{target}}!",
+    "failed": "❌ [SEND] Bai yi nasara ba: {{message}}"
+  },
+  "request": {
+    "usage": "Amfani: REQUEST <adadi> <@sunan_mai_amfani ko waya>",
+    "no_user": "Kuskure: Ba a iya samun mai amfani {{target}}.",
+    "notify_recipient": "🔔 [REQUEST] {{sender}} yana neman {{amount}} XLM daga gare ku. Amsa da: SEND {{amount}} {{senderPhone}}",
+    "confirmation": "[REQUEST] An aika bukatar {{amount}} XLM zuwa {{target}}."
+  },
+  "create_group": {
+    "usage": "Amfani: CREATE GROUP <suna> <adadi> <lokaci>",
+    "success": "✅ An kirkiro rukuni \"{{name}}\"!\nLambar Rukuni: {{id}}",
+    "failed": "❌ Ba a yi nasarar kirkiro rukuni ba: {{message}}"
+  },
+  "join_group": {
+    "usage": "Amfani: JOIN GROUP <groupId>",
+    "success": "✅ An yi nasarar shiga rukuni!",
+    "failed": "❌ Ba a yi nasarar shiga rukuni ba: {{message}}"
+  },
+  "invite_member": {
+    "usage": "Amfani: INVITE MEMBER <@sunan_mai_amfani ko waya>",
+    "no_user": "Kuskure: Ba a iya samun mai amfani {{target}}.",
+    "not_creator": "Kuskure: Ba kai ne ka kirkiro kowane rukuni ba.",
+    "notify_recipient": "🔔 [INVITE] {{sender}} ya gayyace ka ka shiga rukunin su na ajiya \"{{groupName}}\".\n\nAmsa da: JOIN GROUP {{groupId}}",
+    "success": "✅ An aika gayyata zuwa {{target}}."
+  },
+  "group_status": {
+    "no_groups": "Ba ka cikin kowane rukuni.",
+    "header": "*Rukunin Ku:*\n\n",
+    "entry": "*{{name}}*\nBuri: {{amount}} XLM ({{frequency}})\nMatsayi: {{role}}\nMambobi: {{count}}\n\n"
+  },
+  "payout": {
+    "usage": "Amfani: PAYOUT <ORDER|STATUS|WAIT|PROCEED|SKIP>",
+    "no_group": "Kuskure: Ba ka cikin kowane rukuni.",
+    "not_creator": "Kuskure: Ba kai ne ka kirkiro kowane rukuni ba.",
+    "order_usage": "Amfani: PAYOUT ORDER <@mai_amfani1> <@mai_amfani2> ... (jera kowane mamba sau daya)",
+    "order_success": "✅ An sabunta tsarin biyan kudi.",
+    "order_failed": "❌ An kasa sabunta tsarin biyan kudi: {{message}}",
+    "order_invalid_member": "Kuskure: Ba a iya samun mai amfani {{target}}.",
+    "status": "*Tsarin Biyan Kudi na {{name}}*\nZagaye: {{cycle}}\nMai zuwa: {{next}}\n\n{{order}}",
+    "wait_success": "⏳ An kara lokacin biya na sa'o'i 24.",
+    "wait_failed": "❌ An kasa kara lokaci: {{message}}",
+    "proceed_success": "✅ An yi biyan kudi da rabin kudin da aka tara.",
+    "proceed_failed": "❌ An kasa yin biyan kudi: {{message}}",
+    "skip_usage": "Amfani: PAYOUT SKIP <@mai_amfani ko waya>",
+    "skip_success": "✅ An mayar da {{target}} zuwa karshen jerin.",
+    "skip_failed": "❌ An kasa tsallake mamba: {{message}}",
+    "skip_no_user": "Kuskure: Ba a iya samun mai amfani {{target}}."
+  },
+  "contribute": {
+    "usage": "Amfani: CONTRIBUTE <adadi>",
+    "no_group": "Kuskure: Ba ka cikin kowane rukuni.",
+    "amount_mismatch": "❌ Dole gudummawa ta zama daidai {{required}} XLM yadda rukunin nan ke bukata.",
+    "initiating": "[CONTRIBUTE] Ana farawa bada gudummawa ta {{amount}} XLM ga \"{{groupName}}\"...",
+    "success": "✅ An yi nasarar bada gudummawar {{amount}} XLM ga \"{{groupName}}\"!",
+    "failed": "❌ Bada gudummawa bai yi nasara ba: {{message}}"
+  },
+  "validation": {
+    "invalid_format": "❌ Tsarin adadi ba daidai bane. Don Allah sa lambar da ta wuce sifili (misali, 10 ko 10.50).",
+    "zero_amount": "❌ Dole adadi ya wuce sifili.",
+    "precision_exceeded": "❌ Ba za a iya samun adadi fiye da maki na 7 bayan ɗigo ba.",
+    "exceeds_max": "❌ Adadin ya wuce yawan da aka yarda da shi (1,000,000 XLM)."
+  },
+  "withdraw": {
+    "usage": "Amfani: WITHDRAW <adadi>",
+    "no_group": "Kuskure: Ba ka cikin kowane rukuni.",
+    "success": "✅ An yi nasarar cire {{amount}} XLM daga asusun \"{{groupName}}\"! (MOCKED)"
+  },
+  "help": {
+    "text": "*Umarnin Kolo:*\n\n_Asusu_\nBALANCE\nBALANCE <kadari>\nHISTORY\nPROFILE\n\n_Biyan Kudi_\nSEND <adadi> <@mai_amfani>\nREQUEST <adadi> <@mai_amfani>\n\n_Rukunin Ajiya_\nCREATE GROUP <suna> <adadi> <lokaci>\nJOIN GROUP <groupId>\nINVITE MEMBER <@mai_amfani>\nGROUP STATUS\nCONTRIBUTE <adadi>\nWITHDRAW <adadi>\n\n_Zagayen Biyan Kudi_\nPAYOUT ORDER <@mai_amfani1> <@mai_amfani2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@mai_amfani>\n\n_Taimako_\nHELP\nSUPPORT"
+  },
+  "unknown": {
+    "command": "Ban gane wannan umarnin ba. Tura HELP domin ganin umarnin da ake da su."
+  },
+  "error": {
+    "generic": "Wani kuskure ya faru: {{message}}"
+  },
+  "language": {
+    "current": "Harshenka na yanzu shine: {{current}}. Amsa da LANGUAGE <yoruba/pidgin/french/hausa/igbo/english> domin canza shi.",
+    "unsupported": "Ba a goyan bayan wannan harshen. Don Allah zabi daga: yoruba, pidgin, french, hausa, igbo, english.",
+    "success": "✅ An canza harshe cikin nasara!"
+  },
+  "wallet": {
+    "usdc_trustline_low_reserve": "Kuna buƙatar aƙalla XLM 2 a cikin walat ɗinku don kunna USDC."
+  }
+}

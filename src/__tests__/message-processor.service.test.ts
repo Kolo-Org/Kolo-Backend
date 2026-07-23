@@ -7,6 +7,7 @@ jest.mock('../services/locale.service', () => ({
         const paramStr = params ? '|' + JSON.stringify(params) : '';
         return `${key}${paramStr}`;
     },
+    loadLocale: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../lib/redis', () => ({
@@ -42,7 +43,7 @@ const mockCreateGroup = jest.fn().mockResolvedValue({ id: 'g1' });
 const mockJoinGroup = jest.fn().mockResolvedValue({ id: 'gm1' });
 // Group requires 10 XLM per contribution cycle
 const mockGetGroupStatus = jest.fn().mockResolvedValue([
-    { role: 'CREATOR', groupId: 'g1', group: { id: 'g1', name: 'G1', contributionAmount: 10, contributionFrequency: 'MONTHLY', stellarContractId: 'group_pub_key', members: [] } },
+    { role: 'CREATOR', groupId: 'g1', group: { id: 'g1', name: 'G1', contributionAmount: 10, contributionFrequency: 'MONTHLY', stellarContractId: 'group_pub_key', currentPayoutIndex: 0, totalCycles: 0, members: [] } },
 ]);
 const mockAddContribution = jest.fn().mockResolvedValue({ id: 'c1' });
 
@@ -61,6 +62,21 @@ const mockStellarService = { getTransactionHistory: mockGetTransactionHistory, c
 const mockUserService = { getOrCreateUser: mockGetOrCreateUser, resolveUser: mockResolveUser, getUserByPublicKey: jest.fn() };
 const mockGroupService = { createGroup: mockCreateGroup, joinGroup: mockJoinGroup, getGroupStatus: mockGetGroupStatus, addContribution: mockAddContribution };
 
+const mockSetPayoutOrder = jest.fn().mockResolvedValue(['u1', 'u2']);
+const mockGetEffectivePayoutOrder = jest.fn().mockResolvedValue(['u1', 'u2']);
+const mockLockOrderForCycle = jest.fn().mockResolvedValue(undefined);
+const mockExtendDeadline = jest.fn().mockResolvedValue(new Date());
+const mockProceedWithPartialPool = jest.fn().mockResolvedValue({ id: 'p1' });
+const mockSkipDefaultingMember = jest.fn().mockResolvedValue(['u2', 'u1']);
+const mockPayoutService = {
+    setPayoutOrder: mockSetPayoutOrder,
+    getEffectivePayoutOrder: mockGetEffectivePayoutOrder,
+    lockOrderForCycle: mockLockOrderForCycle,
+    extendDeadline: mockExtendDeadline,
+    proceedWithPartialPool: mockProceedWithPartialPool,
+    skipDefaultingMember: mockSkipDefaultingMember,
+};
+
 describe('MessageProcessor', () => {
     let processor: MessageProcessor;
 
@@ -71,6 +87,7 @@ describe('MessageProcessor', () => {
             mockStellarService as any,
             mockUserService as any,
             mockGroupService as any,
+            mockPayoutService as any,
         );
     });
 
@@ -184,9 +201,14 @@ describe('MessageProcessor', () => {
         });
 
         it('should check if sender has a wallet', async () => {
-            mockGetOrCreateUser.mockResolvedValueOnce({ id: 'u1', language: 'en' });
+            const walletUser = {
+                id: 'u1', phoneNumber: '12345', username: 'john',
+                stellarWallet: JSON.stringify({ publicKey: 'G_PUB', encryptedSecret: 'ENC_SEC', iv: 'IV', authTag: 'TAG' }),
+                createdAt: new Date(), language: 'en'
+            };
+            mockGetOrCreateUser.mockResolvedValueOnce(walletUser).mockResolvedValueOnce(walletUser);
             await processor.processCommand('12345', 'SEND 10 @jane');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.no_wallet'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.initiating'));
         });
 
         it('should check if recipient exists and has a wallet', async () => {
@@ -224,6 +246,11 @@ describe('MessageProcessor', () => {
             await processor.processCommand('12345', 'CONTRIBUTE 10');
             expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '10', 'tx123');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.success'));
+        });
+
+        it('should lock the payout order after recording a contribution', async () => {
+            await processor.processCommand('12345', 'CONTRIBUTE 10');
+            expect(mockLockOrderForCycle).toHaveBeenCalledWith('g1');
         });
 
         it('should show usage when insufficient args', async () => {
@@ -434,9 +461,123 @@ describe('MessageProcessor', () => {
         });
     });
 
+    describe('PAYOUT commands', () => {
+        describe('PAYOUT ORDER', () => {
+            it('should show usage when no members supplied', async () => {
+                await processor.processCommand('12345', 'PAYOUT ORDER');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.order_usage'));
+                expect(mockSetPayoutOrder).not.toHaveBeenCalled();
+            });
+
+            it('should reject when the requester is not a group creator', async () => {
+                mockGetGroupStatus.mockResolvedValueOnce([{ role: 'MEMBER', groupId: 'g1', group: { id: 'g1' } }]);
+                await processor.processCommand('12345', 'PAYOUT ORDER @jane');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.not_creator'));
+                expect(mockSetPayoutOrder).not.toHaveBeenCalled();
+            });
+
+            it('should reject when a listed member cannot be resolved', async () => {
+                mockResolveUser.mockResolvedValueOnce(null);
+                await processor.processCommand('12345', 'PAYOUT ORDER @ghost');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.order_invalid_member'));
+                expect(mockSetPayoutOrder).not.toHaveBeenCalled();
+            });
+
+            it('should set the payout order by resolved userIds', async () => {
+                await processor.processCommand('12345', 'PAYOUT ORDER @jane');
+                expect(mockSetPayoutOrder).toHaveBeenCalledWith('g1', 'u1', ['u2']);
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.order_success'));
+            });
+
+            it('should surface service errors (e.g. locked order)', async () => {
+                mockSetPayoutOrder.mockRejectedValueOnce(new Error('Payout order is locked for this cycle'));
+                await processor.processCommand('12345', 'PAYOUT ORDER @jane');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.order_failed'));
+            });
+        });
+
+        describe('PAYOUT STATUS', () => {
+            it('should handle no group membership', async () => {
+                mockGetGroupStatus.mockResolvedValueOnce([]);
+                await processor.processCommand('12345', 'PAYOUT STATUS');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.no_group'));
+            });
+
+            it('should report the current rotation order', async () => {
+                await processor.processCommand('12345', 'PAYOUT STATUS');
+                expect(mockGetEffectivePayoutOrder).toHaveBeenCalledWith('g1');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.status'));
+            });
+        });
+
+        describe('PAYOUT WAIT', () => {
+            it('should reject when not a creator', async () => {
+                mockGetGroupStatus.mockResolvedValueOnce([{ role: 'MEMBER', groupId: 'g1', group: { id: 'g1' } }]);
+                await processor.processCommand('12345', 'PAYOUT WAIT');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.not_creator'));
+                expect(mockExtendDeadline).not.toHaveBeenCalled();
+            });
+
+            it('should extend the deadline', async () => {
+                await processor.processCommand('12345', 'PAYOUT WAIT');
+                expect(mockExtendDeadline).toHaveBeenCalledWith('g1');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.wait_success'));
+            });
+
+            it('should surface an error once the extension cap is reached', async () => {
+                mockExtendDeadline.mockRejectedValueOnce(new Error('Maximum deadline extensions (2) already used for this cycle.'));
+                await processor.processCommand('12345', 'PAYOUT WAIT');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.wait_failed'));
+            });
+        });
+
+        describe('PAYOUT PROCEED', () => {
+            it('should reject when not a creator', async () => {
+                mockGetGroupStatus.mockResolvedValueOnce([{ role: 'MEMBER', groupId: 'g1', group: { id: 'g1' } }]);
+                await processor.processCommand('12345', 'PAYOUT PROCEED');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.not_creator'));
+                expect(mockProceedWithPartialPool).not.toHaveBeenCalled();
+            });
+
+            it('should process the partial pool payout', async () => {
+                await processor.processCommand('12345', 'PAYOUT PROCEED');
+                expect(mockProceedWithPartialPool).toHaveBeenCalledWith('g1');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.proceed_success'));
+            });
+        });
+
+        describe('PAYOUT SKIP', () => {
+            it('should show usage when no target supplied', async () => {
+                await processor.processCommand('12345', 'PAYOUT SKIP');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.skip_usage'));
+                expect(mockSkipDefaultingMember).not.toHaveBeenCalled();
+            });
+
+            it('should reject when the target cannot be resolved', async () => {
+                mockResolveUser.mockResolvedValueOnce(null);
+                await processor.processCommand('12345', 'PAYOUT SKIP @ghost');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.skip_no_user'));
+                expect(mockSkipDefaultingMember).not.toHaveBeenCalled();
+            });
+
+            it('should skip the defaulting member', async () => {
+                await processor.processCommand('12345', 'PAYOUT SKIP @jane');
+                expect(mockSkipDefaultingMember).toHaveBeenCalledWith('g1', 'u1', 'u2');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.skip_success'));
+            });
+        });
+
+        describe('unknown PAYOUT subcommand', () => {
+            it('should show general payout usage', async () => {
+                await processor.processCommand('12345', 'PAYOUT');
+                expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payout.usage'));
+            });
+        });
+    });
+
     describe('error handling', () => {
         it('should catch and report errors from handlers', async () => {
-            mockGetOrCreateUser.mockRejectedValueOnce(new Error('DB connection failed'));
+            mockGetOrCreateUser.mockRejectedValueOnce(new Error('DB connection failed')).mockRejectedValueOnce(new Error('DB connection failed'));
             await processor.processCommand('12345', 'BALANCE');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('error.generic'));
         });
@@ -444,9 +585,8 @@ describe('MessageProcessor', () => {
 
     describe('handleBalance edge cases', () => {
         it('should handle missing wallet', async () => {
-            mockGetOrCreateUser.mockResolvedValueOnce({
-                id: 'u1', phoneNumber: '12345', stellarWallet: null, language: 'en',
-            });
+            const noWalletUser = { id: 'u2', language: 'en' };
+            mockGetOrCreateUser.mockResolvedValueOnce(noWalletUser).mockResolvedValueOnce(noWalletUser);
             await processor.processCommand('12345', 'BALANCE');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('balance.no_wallet'));
         });

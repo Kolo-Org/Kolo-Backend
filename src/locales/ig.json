@@ -1,0 +1,112 @@
+{
+  "balance": {
+    "no_wallet": "[BALANCE] Njehie: Ahazibeghị obere akpa gị.",
+    "success": "💰 Ego Gị:\n{{balances}}",
+    "asset_not_found": "Ị nweghị usoro ntụkwasị obi maka {{asset}}."
+  },
+  "history": {
+    "fetching": "[HISTORY] Na-eweta akụkọ mbufe maka {{phone}}...",
+    "header": "📜 Akụkọ Mbufe (10 ikpeazụ):\n\n",
+    "item_sent": "{{index}}. ✅ Ezigara {{amount}} {{asset}} na {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_received": "{{index}}. 📥 Anatara {{amount}} {{asset}} site na {{counterparty}}\n   {{date}} • tx: {{hash}}",
+    "item_other": "{{index}}. 🔄 {{type}} ({{amount}} {{asset}})\n   {{date}} • tx: {{hash}}",
+    "more": "\nZaghachi HISTORY MORE iji hụ mbufe ochie",
+    "no_more": "\nEnweghị mbufe ndị ọzọ a ga-egosi.",
+    "not_funded": "Enweghị akụkọ mbufe — etinyebeghị ego na obere akpa gị n'oge a",
+    "unavailable": "Akụkọ mbufe adịghị ugbu a. Biko gbalịa ọzọ ma emechaa.",
+    "no_wallet": "Njehie: Ahazibeghị obere akpa gị."
+  },
+  "profile": {
+    "card": "*Purofaịlụ Kolo*\nEkwentị: {{phone}}\nAha ojiji: {{username}}\nObere akpa: {{wallet}}\nO sonyere: {{joined}}"
+  },
+  "send": {
+    "usage": "Ojiji: SEND <ọnụọgụ> <@aha_ojiji ma ọ bụ ekwentị>",
+    "no_wallet": "Njehie: Ahazibeghị obere akpa gị.",
+    "no_recipient": "Njehie: Ahụghị obere akpa maka onye ọrụ {{target}}.",
+    "initiating": "[SEND] Na-ebido izipu {{amount}} XLM na {{target}}...",
+    "success": "✅ Ezigara {{amount}} XLM na {{target}} nke ọma!",
+    "failed": "❌ [SEND] Ọ daala: {{message}}"
+  },
+  "request": {
+    "usage": "Ojiji: REQUEST <ọnụọgụ> <@aha_ojiji ma ọ bụ ekwentị>",
+    "no_user": "Njehie: Ahụghị onye ọrụ {{target}}.",
+    "notify_recipient": "🔔 [REQUEST] {{sender}} na-arịọ {{amount}} XLM n'aka gị. Zaghachi na: SEND {{amount}} {{senderPhone}}",
+    "confirmation": "[REQUEST] Ezigara arịrịọ maka {{amount}} XLM na {{target}}."
+  },
+  "create_group": {
+    "usage": "Ojiji: CREATE GROUP <aha> <ọnụọgụ> <oge>",
+    "success": "✅ E mepụtara otu \"{{name}}\"!\nNọmba Otu: {{id}}",
+    "failed": "❌ Ịmepụta otu adaala: {{message}}"
+  },
+  "join_group": {
+    "usage": "Ojiji: JOIN GROUP <groupId>",
+    "success": "✅ Ị sonyela n'otu ahụ nke ọma!",
+    "failed": "❌ Ịbanye n'otu ahụ adaala: {{message}}"
+  },
+  "invite_member": {
+    "usage": "Ojiji: INVITE MEMBER <@aha_ojiji ma ọ bụ ekwentị>",
+    "no_user": "Njehie: Ahụghị onye ọrụ {{target}}.",
+    "not_creator": "Njehie: Ọ bụghị gị mepụtara otu ọ bụla.",
+    "notify_recipient": "🔔 [INVITE] {{sender}} kpọrọ gị ka ị sonye n'otu nchekwa ego ha \"{{groupName}}\".\n\nZaghachi na: JOIN GROUP {{groupId}}",
+    "success": "✅ Ezigara ọkpụkpọ na {{target}}."
+  },
+  "group_status": {
+    "no_groups": "Ị nọghị n'otu ọ bụla.",
+    "header": "*Otu Gị Ndị A:*\n\n",
+    "entry": "*{{name}}*\nEbumnuche: {{amount}} XLM ({{frequency}})\nỌrụ: {{role}}\nNdị Otu: {{count}}\n\n"
+  },
+  "payout": {
+    "usage": "Ojiji: PAYOUT <ORDER|STATUS|WAIT|PROCEED|SKIP>",
+    "no_group": "Njehie: Ị nọghị n'otu ọ bụla.",
+    "not_creator": "Njehie: Ọ bụghị gị mepụtara otu ọ bụla.",
+    "order_usage": "Ojiji: PAYOUT ORDER <@onye_ọrụ1> <@onye_ọrụ2> ... (depụta onye ọ bụla ozugbo)",
+    "order_success": "✅ Emelitere usoro ịkwụ ụgwọ.",
+    "order_failed": "❌ Emelite usoro ịkwụ ụgwọ adaala: {{message}}",
+    "order_invalid_member": "Njehie: Ahụghị onye ọrụ {{target}}.",
+    "status": "*Usoro Ịkwụ Ụgwọ nke {{name}}*\nCycle: {{cycle}}\nOnye na-eso: {{next}}\n\n{{order}}",
+    "wait_success": "⏳ Agbatịrị oge ịkwụ ụgwọ elekere 24.",
+    "wait_failed": "❌ Agbatị oge adaala: {{message}}",
+    "proceed_success": "✅ Ekwuola ụgwọ site na ọnụ ego a chịkọtara.",
+    "proceed_failed": "❌ Ịkwụ ụgwọ adaala: {{message}}",
+    "skip_usage": "Ojiji: PAYOUT SKIP <@onye_ọrụ ma ọ bụ ekwentị>",
+    "skip_success": "✅ E buliri {{target}} gaa n'azụ usoro ahụ.",
+    "skip_failed": "❌ Ịhapụ onye otu adaala: {{message}}",
+    "skip_no_user": "Njehie: Ahụghị onye ọrụ {{target}}."
+  },
+  "contribute": {
+    "usage": "Ojiji: CONTRIBUTE <ọnụọgụ>",
+    "no_group": "Njehie: Ị nọghị n'otu ọ bụla.",
+    "amount_mismatch": "❌ Ntinye ụtụ ga-abụ kpọmkwem {{required}} XLM dịka otu a chọrọ.",
+    "initiating": "[CONTRIBUTE] Na-ebido ntinye ụtụ nke {{amount}} XLM na \"{{groupName}}\"...",
+    "success": "✅ Etinyere {{amount}} XLM na \"{{groupName}}\" nke ọma!",
+    "failed": "❌ Ntinye ụtụ adaala: {{message}}"
+  },
+  "validation": {
+    "invalid_format": "❌ Ụdị ọnụọgụ adịghị mma. Biko tinye nọmba karịrị efu (dịka, 10 ma ọ bụ 10.50).",
+    "zero_amount": "❌ Ọnụọgụ ga-akarịrị efu.",
+    "precision_exceeded": "❌ Ọnụọgụ enweghị ike inwe karịa mkpụrụ 7 mgbe akara iri gasịrị.",
+    "exceeds_max": "❌ Ọnụọgụ karịrị nke kachasị anabata (1,000,000 XLM)."
+  },
+  "withdraw": {
+    "usage": "Ojiji: WITHDRAW <ọnụọgụ>",
+    "no_group": "Njehie: Ị nọghị n'otu ọ bụla.",
+    "success": "✅ Ewepụtara {{amount}} XLM na nchekwa \"{{groupName}}\" nke ọma! (MOCKED)"
+  },
+  "help": {
+    "text": "*Iwu Kolo:*\n\n_Akaụntụ_\nBALANCE\nBALANCE <akụ>\nHISTORY\nPROFILE\n\n_Ịkwụ Ụgwọ_\nSEND <ọnụọgụ> <@onye_ọrụ>\nREQUEST <ọnụọgụ> <@onye_ọrụ>\n\n_Otu Nchekwa Ego_\nCREATE GROUP <aha> <ọnụọgụ> <oge>\nJOIN GROUP <groupId>\nINVITE MEMBER <@onye_ọrụ>\nGROUP STATUS\nCONTRIBUTE <ọnụọgụ>\nWITHDRAW <ọnụọgụ>\n\n_Usoro Ịkwụ Ụgwọ_\nPAYOUT ORDER <@onye_ọrụ1> <@onye_ọrụ2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@onye_ọrụ>\n\n_Nkwado_\nHELP\nSUPPORT"
+  },
+  "unknown": {
+    "command": "Aghọtaghị m iwu ahụ. Ziga HELP iji hụ iwu ndị dị adị."
+  },
+  "error": {
+    "generic": "Njehie mere: {{message}}"
+  },
+  "language": {
+    "current": "Asụsụ gị ugbu a bụ: {{current}}. Zaghachi na LANGUAGE <yoruba/pidgin/french/hausa/igbo/english> iji gbanwee ya.",
+    "unsupported": "A naghị akwado asụsụ a. Biko họrọ n'ime: yoruba, pidgin, french, hausa, igbo, english.",
+    "success": "✅ Agbanwela asụsụ ahụ nke ọma!"
+  },
+  "wallet": {
+    "usdc_trustline_low_reserve": "Ị chọrọ opekata mpe 2 XLM na obere akpa gị iji mee ka USDC rụọ ọrụ."
+  }
+}

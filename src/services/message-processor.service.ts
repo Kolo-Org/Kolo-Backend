@@ -2,8 +2,9 @@ import { WhatsAppService } from './whatsapp.service';
 import { StellarService } from './stellar.service';
 import { UserService } from './user.service';
 import { GroupService } from './group.service';
+import { PayoutService } from './payout.service';
 import { decrypt } from '../utils/encryption.util';
-import { t } from './locale.service';
+import { t, isSupportedLanguage, loadLocale } from './locale.service';
 import { redisClient } from '../lib/redis';
 
 export class MessageProcessor {
@@ -11,17 +12,20 @@ export class MessageProcessor {
     private stellarService: StellarService;
     private userService: UserService;
     private groupService: GroupService;
+    private payoutService: PayoutService;
 
     constructor(
         whatsappService?: WhatsAppService,
         stellarService?: StellarService,
         userService?: UserService,
         groupService?: GroupService,
+        payoutService?: PayoutService,
     ) {
         this.whatsappService = whatsappService ?? new WhatsAppService();
         this.stellarService = stellarService ?? new StellarService();
         this.userService = userService ?? new UserService();
         this.groupService = groupService ?? new GroupService();
+        this.payoutService = payoutService ?? new PayoutService();
     }
 
     /**
@@ -52,9 +56,19 @@ export class MessageProcessor {
         return null;
     }
 
-    public async processCommand(from: string, text: string) {
+    public async processCommand(from: string, text: string, locale?: string) {
         const tokens = text.trim().split(/\s+/);
         if (tokens.length === 0) return;
+
+        // Ensure user is created/fetched with locale early on
+        const user = await this.userService.getOrCreateUser(from, locale).catch(e => {
+            console.error('Failed early user creation', e);
+            return null;
+        });
+
+        if (user && user.language) {
+            await loadLocale(user.language);
+        }
 
         const cmd1 = tokens[0].toUpperCase();
         const cmd2 = tokens.length > 1 ? tokens[1].toUpperCase() : '';
@@ -68,9 +82,13 @@ export class MessageProcessor {
                 return await this.handleInviteMember(from, tokens.slice(2));
             } else if (cmd1 === 'GROUP' && cmd2 === 'STATUS') {
                 return await this.handleGroupStatus(from, tokens.slice(2));
+            } else if (cmd1 === 'PAYOUT') {
+                return await this.handlePayoutCommand(from, cmd2, tokens.slice(2));
             }
 
             switch (cmd1) {
+                case 'LANGUAGE':
+                    return await this.handleLanguage(from, tokens.slice(1));
                 case 'BALANCE':
                     return await this.handleBalance(from, tokens.slice(1));
                 case 'HISTORY':
@@ -93,12 +111,43 @@ export class MessageProcessor {
             }
         } catch (error: any) {
             console.error('Error processing command:', error);
-            const user = await this.userService.getOrCreateUser(from).catch(() => ({ language: 'en' }));
+            const user = await this.userService.getOrCreateUser(from, locale).catch(() => ({ language: 'en' }));
             await this.whatsappService.sendMessage(
                 from,
                 t('error.generic', user.language ?? 'en', { message: error.message }),
             );
         }
+    }
+
+    private async handleLanguage(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        let lang = user.language ?? 'en';
+        
+        if (args.length === 0) {
+            return await this.whatsappService.sendMessage(from, t('language.current', lang, { current: lang }));
+        }
+
+        const requestedLang = args[0].toLowerCase();
+        
+        // Map common names to codes
+        const langMap: Record<string, string> = {
+            'english': 'en',
+            'french': 'fr',
+            'yoruba': 'yo',
+            'pidgin': 'pcm',
+            'hausa': 'ha',
+            'igbo': 'ig'
+        };
+
+        const targetCode = langMap[requestedLang] || requestedLang;
+        
+        if (!isSupportedLanguage(targetCode)) {
+            return await this.whatsappService.sendMessage(from, t('language.unsupported', lang));
+        }
+
+        await this.userService.updateUserLanguage(from, targetCode);
+        await loadLocale(targetCode);
+        return await this.whatsappService.sendMessage(from, t('language.success', targetCode));
     }
 
     private async handleBalance(from: string, args: string[] = []) {
@@ -434,6 +483,149 @@ export class MessageProcessor {
         await this.whatsappService.sendMessage(from, statusText.trim());
     }
 
+    private async handlePayoutCommand(from: string, sub: string, args: string[]) {
+        switch (sub) {
+            case 'ORDER':
+                return await this.handleSetPayoutOrder(from, args);
+            case 'STATUS':
+                return await this.handlePayoutStatus(from);
+            case 'WAIT':
+                return await this.handlePayoutWait(from);
+            case 'PROCEED':
+                return await this.handlePayoutProceed(from);
+            case 'SKIP':
+                return await this.handlePayoutSkip(from, args);
+            default: {
+                const user = await this.userService.getOrCreateUser(from);
+                return await this.whatsappService.sendMessage(from, t('payout.usage', user.language ?? 'en'));
+            }
+        }
+    }
+
+    private async handleSetPayoutOrder(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language ?? 'en';
+
+        if (args.length === 0) {
+            return await this.whatsappService.sendMessage(from, t('payout.order_usage', lang));
+        }
+
+        const memberships = await this.groupService.getGroupStatus(user.id);
+        const adminGroup = memberships.find((m: any) => m.role === 'CREATOR');
+        if (!adminGroup) {
+            return await this.whatsappService.sendMessage(from, t('payout.not_creator', lang));
+        }
+
+        const order: string[] = [];
+        for (const target of args) {
+            const resolved = await this.userService.resolveUser(target);
+            if (!resolved) {
+                return await this.whatsappService.sendMessage(from, t('payout.order_invalid_member', lang, { target }));
+            }
+            order.push(resolved.id);
+        }
+
+        try {
+            await this.payoutService.setPayoutOrder(adminGroup.groupId, user.id, order);
+            await this.whatsappService.sendMessage(from, t('payout.order_success', lang));
+        } catch (e: any) {
+            await this.whatsappService.sendMessage(from, t('payout.order_failed', lang, { message: e.message }));
+        }
+    }
+
+    private async handlePayoutStatus(from: string) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language ?? 'en';
+
+        const memberships = await this.groupService.getGroupStatus(user.id);
+        if (memberships.length === 0) {
+            return await this.whatsappService.sendMessage(from, t('payout.no_group', lang));
+        }
+
+        const group = memberships[0].group;
+        const order = await this.payoutService.getEffectivePayoutOrder(group.id);
+        const nameById = new Map(
+            group.members.map((m: any) => [m.userId, m.user.username ? '@' + m.user.username : m.user.phoneNumber]),
+        );
+
+        const orderText = order
+            .map((id: string, i: number) => `${i + 1}. ${nameById.get(id) || id}${i === group.currentPayoutIndex ? ' ⬅️ next' : ''}`)
+            .join('\n');
+        const nextId = order[group.currentPayoutIndex];
+        const next = nextId ? (nameById.get(nextId) || nextId) : 'N/A';
+
+        await this.whatsappService.sendMessage(from, t('payout.status', lang, {
+            name: group.name,
+            cycle: group.totalCycles + 1,
+            next,
+            order: orderText,
+        }));
+    }
+
+    private async handlePayoutWait(from: string) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language ?? 'en';
+
+        const memberships = await this.groupService.getGroupStatus(user.id);
+        const adminGroup = memberships.find((m: any) => m.role === 'CREATOR');
+        if (!adminGroup) {
+            return await this.whatsappService.sendMessage(from, t('payout.not_creator', lang));
+        }
+
+        try {
+            await this.payoutService.extendDeadline(adminGroup.groupId);
+            await this.whatsappService.sendMessage(from, t('payout.wait_success', lang));
+        } catch (e: any) {
+            await this.whatsappService.sendMessage(from, t('payout.wait_failed', lang, { message: e.message }));
+        }
+    }
+
+    private async handlePayoutProceed(from: string) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language ?? 'en';
+
+        const memberships = await this.groupService.getGroupStatus(user.id);
+        const adminGroup = memberships.find((m: any) => m.role === 'CREATOR');
+        if (!adminGroup) {
+            return await this.whatsappService.sendMessage(from, t('payout.not_creator', lang));
+        }
+
+        try {
+            await this.payoutService.proceedWithPartialPool(adminGroup.groupId);
+            await this.whatsappService.sendMessage(from, t('payout.proceed_success', lang));
+        } catch (e: any) {
+            await this.whatsappService.sendMessage(from, t('payout.proceed_failed', lang, { message: e.message }));
+        }
+    }
+
+    private async handlePayoutSkip(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language ?? 'en';
+
+        if (args.length < 1) {
+            return await this.whatsappService.sendMessage(from, t('payout.skip_usage', lang));
+        }
+
+        const memberships = await this.groupService.getGroupStatus(user.id);
+        const adminGroup = memberships.find((m: any) => m.role === 'CREATOR');
+        if (!adminGroup) {
+            return await this.whatsappService.sendMessage(from, t('payout.not_creator', lang));
+        }
+
+        const target = args[0];
+        const resolved = await this.userService.resolveUser(target);
+        if (!resolved) {
+            return await this.whatsappService.sendMessage(from, t('payout.skip_no_user', lang, { target }));
+        }
+
+        try {
+            await this.payoutService.skipDefaultingMember(adminGroup.groupId, user.id, resolved.id);
+            await this.whatsappService.sendMessage(from, t('payout.skip_success', lang, { target }));
+        } catch (e: any) {
+            await this.whatsappService.sendMessage(from, t('payout.skip_failed', lang, { message: e.message }));
+        }
+    }
+
     private async handleContribute(from: string, args: string[]) {
         const user = await this.userService.getOrCreateUser(from);
         const lang = user.language ?? 'en';
@@ -488,6 +680,9 @@ export class MessageProcessor {
             const txHash = txResponse.hash || ('fallback_tx_' + Date.now());
             
             await this.groupService.addContribution(user.id, group.id, amountStr, txHash);
+            // The first contribution of a cycle locks the payout order — the creator
+            // can no longer reorder once the rotation is underway.
+            await this.payoutService.lockOrderForCycle(group.id).catch((e) => console.error('Failed to lock payout order', e));
             await this.whatsappService.sendMessage(
                 from,
                 t('contribute.success', lang, { amount: amountStr, groupName: group.name }),
