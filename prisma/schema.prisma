@@ -19,26 +19,29 @@ model User {
   contributions Contribution[]
 }
 
-model SavingsGroup {
-  id                     String           @id @default(uuid())
-  name                   String
-  contributionAmount     Decimal
-  contributionFrequency  String // e.g., "WEEKLY", "MONTHLY"
-  stellarContractId      String? // Soroban contract ID once deployed
-  currentCycleStart      DateTime?
-  currentCycleEnd        DateTime?
-  bullMqJobId            String?
-  payoutOrder            Json? // Ordered array of member userIds; defaults to join order when null
-  currentPayoutIndex     Int              @default(0)
-  totalCycles            Int              @default(0)
-  payoutOrderLockedAt    DateTime? // Set once the first contribution of a cycle lands; blocks reordering
-  deadlineExtensionsUsed Int              @default(0)
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
-  members                GroupMember[]
-  payouts                Payout[]
-  payoutOrderLogs        PayoutOrderLog[]
+enum DeploymentStatus {
+  PENDING
+  DEPLOYING
+  DEPLOYED
+  FAILED
 }
+
+model SavingsGroup {
+  id                   String            @id @default(uuid())
+  name                 String
+  contributionAmount   Decimal
+  contributionFrequency String        // e.g., "WEEKLY", "MONTHLY"
+  stellarContractId    String?        // Soroban contract ID once deployed
+  deploymentStatus     DeploymentStatus  @default(PENDING)
+  deploymentError      String?
+  currentCycleStart    DateTime?
+  currentCycleEnd      DateTime?
+  bullMqJobId          String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  members              GroupMember[]
+}
+
 
 model GroupMember {
   id       String       @id @default(uuid())

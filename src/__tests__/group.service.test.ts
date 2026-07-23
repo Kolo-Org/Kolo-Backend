@@ -18,6 +18,35 @@ jest.mock('@prisma/client', () => {
     return { PrismaClient: jest.fn(() => mPrismaClient) };
 });
 
+jest.mock('../queue/contribution-scheduler.queue', () => ({
+    scheduleGroupCycle: jest.fn().mockResolvedValue(null),
+    removeGroupCycle: jest.fn().mockResolvedValue(undefined),
+    getCronPattern: jest.fn().mockReturnValue('0 9 * * 1'),
+}));
+
+jest.mock('../queue/soroban-deployment.queue', () => ({
+    enqueueContractDeployment: jest.fn().mockResolvedValue({ id: 'job-deploy-1' }),
+    getFailedDeployments: jest.fn().mockResolvedValue([]),
+    retryFailedDeployment: jest.fn().mockResolvedValue({ id: 'job-retry-1' }),
+}));
+
+jest.mock('../lib/redis', () => ({
+    redisClient: {
+        status: 'ready',
+    },
+}));
+
+jest.mock('bullmq', () => ({
+    Queue: jest.fn().mockImplementation(() => ({
+        add: jest.fn().mockResolvedValue({ id: 'job-1' }),
+        close: jest.fn().mockResolvedValue(undefined),
+    })),
+    Worker: jest.fn().mockImplementation(() => ({
+        on: jest.fn(),
+        close: jest.fn().mockResolvedValue(undefined),
+    })),
+}));
+
 describe('GroupService', () => {
     let groupService: GroupService;
     let prismaClientMock: any;
@@ -40,6 +69,7 @@ describe('GroupService', () => {
                     name: 'Test Group',
                     contributionAmount: '100',
                     contributionFrequency: 'WEEKLY',
+                    deploymentStatus: 'PENDING',
                     members: {
                         create: {
                             userId: 'u1',
