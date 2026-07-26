@@ -214,6 +214,8 @@ DATABASE_URL=postgresql://user:password@localhost:5432/kolo_db
 STELLAR_NETWORK=TESTNET
 REDIS_URL=redis://localhost:6379
 ENCRYPTION_KEY=your_32_byte_hex_string
+GROUP_TREASURY_SECRET=your_stellar_secret_key # interim shared signer that disburses rotational payouts
+MAX_PAYOUT_DEADLINE_EXTENSIONS=2
 ```
 
 ### Database Setup

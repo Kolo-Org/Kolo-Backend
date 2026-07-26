@@ -79,6 +79,23 @@ describe('BotController', () => {
             });
         });
 
+        it('should extract locale from contact profile if available', async () => {
+            const payload = createWebhookPayload('HELLO');
+            (payload.entry[0].changes[0].value as any).contacts = [{
+                wa_id: '12345',
+                profile: { name: 'Jane', locale: 'fr' }
+            }];
+            mockReq = { body: payload };
+            await botController.handleMessage(mockReq as Request, mockRes as Response);
+            expect(mockRes.sendStatus).toHaveBeenCalledWith(200);
+            expect(mockEnqueueMessage).toHaveBeenCalledWith({
+                from: '12345',
+                msgBody: 'HELLO',
+                whatsappMessageId: 'wamid.123',
+                locale: 'fr',
+            });
+        });
+
         it('should return 200 and not enqueue for empty message body', async () => {
             const payload = createWebhookPayload('');
             payload.entry[0].changes[0].value.messages[0].text.body = '';

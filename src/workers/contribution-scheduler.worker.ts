@@ -2,7 +2,7 @@ import { Worker, Job } from 'bullmq';
 import { config } from '../config/env';
 import { PrismaClient } from '@prisma/client';
 import { WhatsAppService } from '../services/whatsapp.service';
-import { GroupService } from '../services/group.service';
+import { PayoutService } from '../services/payout.service';
 import { enqueueDelayedReminder, enqueueCycleEnd } from '../queue/contribution-scheduler.queue';
 import { redisClient } from '../lib/redis';
 
@@ -15,20 +15,20 @@ export function startContributionSchedulerWorker(): void {
     if (workerInstance) return;
 
     const whatsappService = new WhatsAppService();
-    const groupService = new GroupService();
+    const payoutService = new PayoutService();
 
     workerInstance = new Worker(
         'contribution-scheduling',
         async (job: Job) => {
             console.log(`Processing contribution-scheduling job ${job.id} (${job.name})`);
-            
+
             try {
                 if (job.name === 'cycle-start') {
                     await handleCycleStart(job, whatsappService);
                 } else if (job.name === 'last-call-reminder') {
                     await handleLastCallReminder(job, whatsappService);
                 } else if (job.name === 'cycle-end') {
-                    await handleCycleEnd(job, groupService);
+                    await handleCycleEnd(job, payoutService);
                 }
             } catch (err) {
                 console.error(`Error processing job ${job.id}:`, err);
@@ -161,13 +161,13 @@ async function handleLastCallReminder(job: Job, whatsappService: WhatsAppService
     }
 }
 
-async function handleCycleEnd(job: Job, groupService: GroupService) {
+async function handleCycleEnd(job: Job, payoutService: PayoutService) {
     const { groupId } = job.data;
     const group = await prisma.savingsGroup.findUnique({ where: { id: groupId } });
     if (!group) return;
-    
-    // The cycle has officially ended. We trigger payout logic.
-    await groupService.triggerPayout(groupId);
+
+    // The cycle has officially ended. Verify contributions and pay out the next member in rotation.
+    await payoutService.processCycleEnd(groupId);
 }
 
 export async function closeContributionWorker(): Promise<void> {

@@ -6,6 +6,7 @@ export interface MessageJobData {
     from: string;
     msgBody: string;
     whatsappMessageId: string;
+    locale?: string;
 }
 
 const connection = {
