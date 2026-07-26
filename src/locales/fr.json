@@ -74,6 +74,9 @@
   "error": {
     "generic": "Une erreur s'est produite : {{message}}"
   },
+  "rate_limit": {
+    "exceeded": "⚠️ Vous envoyez trop de demandes. Veuillez patienter {{remainingSeconds}} secondes."
+  },
   "wallet": {
     "usdc_trustline_low_reserve": "Vous avez besoin d'au moins 2 XLM dans votre portefeuille pour activer l'USDC."
   }

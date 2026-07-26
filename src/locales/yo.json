@@ -74,6 +74,9 @@
   "error": {
     "generic": "Aṣiṣe ṣẹlẹ: {{message}}"
   },
+  "rate_limit": {
+    "exceeded": "⚠️ O n kọlu awọn ibeere pupọ ju. Jọwọ duro fun iṣẹju-aaya {{remainingSeconds}}."
+  },
   "wallet": {
     "usdc_trustline_low_reserve": "O nílò ó kéré tán 2 XLM nínú àpamọ́wọ́ rẹ láti mú USDC ṣiṣẹ́."
   }
