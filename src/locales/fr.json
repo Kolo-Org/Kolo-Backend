@@ -92,10 +92,8 @@
   "error": {
     "generic": "Une erreur s'est produite : {{message}}"
   },
-  "language": {
-    "current": "Votre langue actuelle est : {{current}}. Répondez avec LANGUAGE <yoruba/pidgin/french/hausa/igbo/english> pour la modifier.",
-    "unsupported": "Langue non prise en charge. Veuillez choisir parmi : yoruba, pidgin, french, hausa, igbo, english.",
-    "success": "✅ Langue modifiée avec succès !"
+  "rate_limit": {
+    "exceeded": "⚠️ Vous envoyez trop de demandes. Veuillez patienter {{remainingSeconds}} secondes."
   },
   "wallet": {
     "usdc_trustline_low_reserve": "Vous avez besoin d'au moins 2 XLM dans votre portefeuille pour activer l'USDC."

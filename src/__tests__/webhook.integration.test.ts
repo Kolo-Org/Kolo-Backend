@@ -14,8 +14,8 @@ jest.mock('../queue/message.queue', () => ({
     enqueueMessage: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
 }));
 
-jest.mock('../middleware/rateLimiter', () => ({
-    webhookRateLimiter: (req: any, res: any, next: any) => next(),
+jest.mock('../middleware/command-rate-limit.middleware', () => ({
+    commandRateLimitMiddleware: (req: any, res: any, next: any) => next(),
 }));
 
 jest.mock('../services/observability.service', () => ({
