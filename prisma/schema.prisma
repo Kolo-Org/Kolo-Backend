@@ -8,15 +8,16 @@ generator client {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  phoneNumber   String         @unique
-  username      String?        @unique
-  stellarWallet String?        @unique // JSON: {"publicKey":"...","encryptedSecret":"...","iv":"...","authTag":"..."}
-  language      String         @default("en")
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  groups        GroupMember[]
-  contributions Contribution[]
+  id                   String         @id @default(uuid())
+  phoneNumber          String         @unique
+  username             String?        @unique
+  stellarWallet        String?        @unique // JSON: {"publicKey":"...","encryptedSecret":"...","iv":"...","authTag":"...", "keyVersion": 1}
+  encryptionKeyVersion Int            @default(1)
+  language             String         @default("en")
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  groups               GroupMember[]
+  contributions        Contribution[]
 }
 
 enum DeploymentStatus {
@@ -27,21 +28,22 @@ enum DeploymentStatus {
 }
 
 model SavingsGroup {
-  id                   String            @id @default(uuid())
-  name                 String
-  contributionAmount   Decimal
-  contributionFrequency String        // e.g., "WEEKLY", "MONTHLY"
-  stellarContractId    String?        // Soroban contract ID once deployed
-  deploymentStatus     DeploymentStatus  @default(PENDING)
-  deploymentError      String?
-  currentCycleStart    DateTime?
-  currentCycleEnd      DateTime?
-  bullMqJobId          String?
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
-  members              GroupMember[]
+  id                    String           @id @default(uuid())
+  name                  String
+  contributionAmount    Decimal
+  contributionFrequency String // e.g., "WEEKLY", "MONTHLY"
+  stellarContractId     String? // Soroban contract ID once deployed
+  deploymentStatus      DeploymentStatus @default(PENDING)
+  deploymentError       String?
+  currentCycleStart     DateTime?
+  currentCycleEnd       DateTime?
+  bullMqJobId           String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  members               GroupMember[]
+  Payout                Payout[]
+  PayoutOrderLog        PayoutOrderLog[]
 }
-
 
 model GroupMember {
   id       String       @id @default(uuid())

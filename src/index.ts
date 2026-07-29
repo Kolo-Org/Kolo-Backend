@@ -1,9 +1,11 @@
 import express, { type ErrorRequestHandler } from 'express';
 import { StrKey } from '@stellar/stellar-sdk';
 import botRoutes from './routes/bot.routes';
+import adminRoutes from './routes/admin.routes';
 import { config } from './config/env';
 import { startWorker } from './workers/message.worker';
 import { startSorobanDeploymentWorker } from './workers/soroban-deployment.worker';
+import { startKeyRotationWorker } from './workers/key-rotation.worker';
 import { observabilityService } from './services/observability.service';
 
 if (!config.ENCRYPTION_KEY) {
@@ -44,6 +46,7 @@ app.use(express.json({
 }));
 
 app.use('/api', botRoutes);
+app.use('/admin', adminRoutes);
 
 app.get('/', (req, res) => {
     res.send('Kolo Backend is running');
@@ -66,6 +69,7 @@ const server = app.listen(config.PORT, () => {
     observabilityService.logInfo(`Server is listening on port ${config.PORT}`);
     startWorker();
     startSorobanDeploymentWorker();
+    startKeyRotationWorker();
 });
 
 

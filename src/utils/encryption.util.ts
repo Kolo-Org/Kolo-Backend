@@ -3,41 +3,58 @@ import { config } from '../config/env';
 
 const ALGORITHM = 'aes-256-gcm';
 
-export function encrypt(text: string) {
-    if (!config.ENCRYPTION_KEY || config.ENCRYPTION_KEY.length !== 64) {
-        throw new Error('ENCRYPTION_KEY is not set or must be a 64-character hex string (32 bytes).');
+function getKeyBuffer(version?: number): Buffer {
+    const keyVersion = version || 1;
+    const keyString = config.ENCRYPTION_KEYS[keyVersion] || config.ENCRYPTION_KEY;
+
+    if (!keyString || keyString.length !== 64) {
+        throw new Error(`Encryption key for version ${keyVersion} is not set or must be a 64-character hex string (32 bytes).`);
     }
 
-    const key = Buffer.from(config.ENCRYPTION_KEY, 'hex');
-    const iv = crypto.randomBytes(12); // 96-bit IV is standard for GCM
-    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-
-    const authTag = cipher.getAuthTag().toString('hex');
-
-    return {
-        encryptedText: encrypted,
-        iv: iv.toString('hex'),
-        authTag: authTag,
-    };
+    return Buffer.from(keyString, 'hex');
 }
 
-export function decrypt(encryptedText: string, ivHex: string, authTagHex: string): string {
-    if (!config.ENCRYPTION_KEY || config.ENCRYPTION_KEY.length !== 64) {
-        throw new Error('ENCRYPTION_KEY is not set or must be a 64-character hex string (32 bytes).');
+export function encrypt(text: string) {
+    const keyVersion = config.CURRENT_ENCRYPTION_KEY_VERSION;
+    const key = getKeyBuffer(keyVersion);
+    let cipher: crypto.CipherGCM | undefined;
+
+    try {
+        const iv = crypto.randomBytes(12); // 96-bit IV is standard for GCM
+        cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+
+        let encrypted = cipher.update(text, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+
+        const authTag = cipher.getAuthTag().toString('hex');
+
+        return {
+            encryptedText: encrypted,
+            iv: iv.toString('hex'),
+            authTag: authTag,
+            keyVersion: keyVersion
+        };
+    } finally {
+        key.fill(0);
     }
+}
 
-    const key = Buffer.from(config.ENCRYPTION_KEY, 'hex');
-    const iv = Buffer.from(ivHex, 'hex');
-    const authTag = Buffer.from(authTagHex, 'hex');
+export function decrypt(encryptedText: string, ivHex: string, authTagHex: string, keyVersion?: number): string {
+    const key = getKeyBuffer(keyVersion);
+    let decipher: crypto.DecipherGCM | undefined;
 
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-    decipher.setAuthTag(authTag);
+    try {
+        const iv = Buffer.from(ivHex, 'hex');
+        const authTag = Buffer.from(authTagHex, 'hex');
 
-    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
+        decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+        decipher.setAuthTag(authTag);
 
-    return decrypted;
+        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+
+        return decrypted;
+    } finally {
+        key.fill(0);
+    }
 }
