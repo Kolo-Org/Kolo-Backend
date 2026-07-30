@@ -4,7 +4,12 @@ import { config } from '../config/env';
 const ALGORITHM = 'aes-256-gcm';
 
 function getKeyBuffer(version?: number): Buffer {
-    const keyVersion = version || 1;
+    const keyVersion = version === undefined ? 1 : version;
+
+    if (typeof keyVersion !== 'number' || isNaN(keyVersion) || keyVersion < 1) {
+        throw new Error(`Invalid encryption key version: ${keyVersion}`);
+    }
+
     let keyString = config.ENCRYPTION_KEYS[keyVersion];
     
     if (!keyString && keyVersion === 1) {
