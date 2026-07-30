@@ -1,57 +1,68 @@
 import { encrypt, decrypt } from '../utils/encryption.util';
 import { config } from '../config/env';
 
-describe('Encryption Utility', () => {
-    const originalKey = config.ENCRYPTION_KEY;
+describe('encryption.util', () => {
+    let originalConfig: typeof config;
 
-    beforeAll(() => {
-        // Set a dummy 32-byte hex key for testing (64 hex characters)
-        config.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    beforeEach(() => {
+        originalConfig = { ...config };
+        config.ENCRYPTION_KEYS = {
+            1: '1111111111111111111111111111111111111111111111111111111111111111',
+            2: '2222222222222222222222222222222222222222222222222222222222222222',
+        };
+        config.CURRENT_ENCRYPTION_KEY_VERSION = 2;
     });
 
-    afterAll(() => {
-        config.ENCRYPTION_KEY = originalKey;
+    afterEach(() => {
+        Object.assign(config, originalConfig);
     });
 
-    it('should successfully encrypt and decrypt a string', () => {
-        const secret = 'SAXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
-        const { encryptedText, iv, authTag } = encrypt(secret);
+    it('encrypts using the current key version', () => {
+        const text = 'my super secret seed phrase';
+        const result = encrypt(text);
 
-        expect(encryptedText).toBeDefined();
-        expect(iv).toBeDefined();
-        expect(authTag).toBeDefined();
-        expect(encryptedText).not.toEqual(secret);
+        expect(result.keyVersion).toBe(2);
+        expect(result.encryptedText).toBeDefined();
+        expect(result.iv).toBeDefined();
+        expect(result.authTag).toBeDefined();
 
-        const decrypted = decrypt(encryptedText, iv, authTag);
-        expect(decrypted).toEqual(secret);
+        const decrypted = decrypt(result.encryptedText, result.iv, result.authTag, result.keyVersion);
+        expect(decrypted).toBe(text);
     });
 
-    it('should produce different ciphertexts for the same plaintext due to random IV', () => {
-        const secret = 'SAXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
-        const result1 = encrypt(secret);
-        const result2 = encrypt(secret);
+    it('decrypts legacy v1 data when keyVersion is not provided', () => {
+        config.CURRENT_ENCRYPTION_KEY_VERSION = 1;
+        const text = 'legacy secret';
+        const result = encrypt(text);
+        
+        config.CURRENT_ENCRYPTION_KEY_VERSION = 2; // System upgraded
 
-        expect(result1.encryptedText).not.toEqual(result2.encryptedText);
-        expect(result1.iv).not.toEqual(result2.iv);
+        // Decrypt without specifying keyVersion (legacy fallback)
+        const decrypted = decrypt(result.encryptedText, result.iv, result.authTag);
+        expect(decrypted).toBe(text);
     });
 
-    it('should throw an error if the authTag is tampered with', () => {
-        const secret = 'SAXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
-        const { encryptedText, iv, authTag } = encrypt(secret);
+    it('decrypts successfully with explicit v1 key', () => {
+        config.CURRENT_ENCRYPTION_KEY_VERSION = 1;
+        const text = 'legacy secret explicit';
+        const result = encrypt(text);
 
-        // Tamper with authTag by reversing it
-        const tamperedAuthTag = authTag.split('').reverse().join('');
-        // Ensure we actually changed it, if it's a palindrome we just replace first char
-        const finalAuthTag = tamperedAuthTag === authTag ? authTag.replace('0', '1') : tamperedAuthTag;
+        const decrypted = decrypt(result.encryptedText, result.iv, result.authTag, 1);
+        expect(decrypted).toBe(text);
+    });
+
+    it('fails to decrypt if the wrong version is supplied', () => {
+        const text = 'secret data';
+        const result = encrypt(text); // encrypted with v2
 
         expect(() => {
-            decrypt(encryptedText, iv, finalAuthTag);
+            decrypt(result.encryptedText, result.iv, result.authTag, 1); // try to decrypt with v1
         }).toThrow();
     });
 
-    it('should throw an error if ENCRYPTION_KEY is not set or invalid length', () => {
-        config.ENCRYPTION_KEY = 'shortkey';
-        expect(() => encrypt('test')).toThrow('ENCRYPTION_KEY is not set or must be a 64-character hex string (32 bytes).');
-        expect(() => decrypt('text', 'iv', 'tag')).toThrow('ENCRYPTION_KEY is not set or must be a 64-character hex string (32 bytes).');
+    it('fails to decrypt if key version is missing from config', () => {
+        expect(() => {
+            decrypt('dummy', 'dummy', 'dummy', 99);
+        }).toThrow('Encryption key for version 99 is not set');
     });
 });

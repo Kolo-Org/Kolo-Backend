@@ -1,6 +1,11 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const currentVersionParsed = parseInt(process.env.CURRENT_ENCRYPTION_KEY_VERSION || '1', 10);
+if (isNaN(currentVersionParsed)) {
+    throw new Error('CURRENT_ENCRYPTION_KEY_VERSION must be a valid number');
+}
+
 export const config = {
     PORT: process.env.PORT || 3000,
     WHATSAPP_TOKEN: process.env.WHATSAPP_TOKEN || '',
@@ -11,6 +16,12 @@ export const config = {
     STELLAR_NETWORK: process.env.STELLAR_NETWORK || 'TESTNET', // TESTNET or PUBLIC
     REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || '', // Must be a 32-byte hex string
+    CURRENT_ENCRYPTION_KEY_VERSION: currentVersionParsed,
+    ENCRYPTION_KEYS: {
+        1: process.env.ENCRYPTION_KEY_V1 || process.env.ENCRYPTION_KEY || '',
+        2: process.env.ENCRYPTION_KEY_V2 || '',
+        3: process.env.ENCRYPTION_KEY_V3 || '',
+    } as Record<number, string>,
     USDC_ISSUER_PUBLIC_KEY: process.env.USDC_ISSUER_PUBLIC_KEY || '', // SDF testnet issuer or Circle/centre.io mainnet issuer, depending on STELLAR_NETWORK
     SOROBAN_RPC_URL: process.env.SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org',
     CONTRACT_WASM_PATH: process.env.CONTRACT_WASM_PATH || 'contracts/savings_group.wasm',

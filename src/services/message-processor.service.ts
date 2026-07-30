@@ -307,7 +307,7 @@ export class MessageProcessor {
         }
 
         const senderWallet = JSON.parse(user.stellarWallet);
-        const senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag);
+        const senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag, senderWallet.keyVersion || user.encryptionKeyVersion);
         const recipientPublicKey = JSON.parse(recipient.stellarWallet).publicKey;
 
         try {
@@ -667,7 +667,7 @@ export class MessageProcessor {
         }
 
         const senderWallet = JSON.parse(user.stellarWallet);
-        const senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag);
+        const senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag, senderWallet.keyVersion || user.encryptionKeyVersion);
         const recipientPublicKey = group.stellarContractId;
 
         try {
