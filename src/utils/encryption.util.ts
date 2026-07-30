@@ -6,7 +6,7 @@ const ALGORITHM = 'aes-256-gcm';
 function getKeyBuffer(version?: number): Buffer {
     const keyVersion = version === undefined ? 1 : version;
 
-    if (typeof keyVersion !== 'number' || isNaN(keyVersion) || keyVersion < 1) {
+    if (!Number.isInteger(keyVersion) || keyVersion < 1) {
         throw new Error(`Invalid encryption key version: ${keyVersion}`);
     }
 
