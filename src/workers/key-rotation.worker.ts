@@ -14,6 +14,7 @@ export const startKeyRotationWorker = () => {
             
             let processedCount = 0;
             let hasMore = true;
+            let failedIds: string[] = [];
 
             while (hasMore) {
                 const users = await prisma.user.findMany({
@@ -23,6 +24,9 @@ export const startKeyRotationWorker = () => {
                         },
                         stellarWallet: {
                             not: null
+                        },
+                        id: {
+                            notIn: failedIds
                         }
                     },
                     take: 100,
@@ -39,10 +43,11 @@ export const startKeyRotationWorker = () => {
                 for (const user of users) {
                     if (!user.stellarWallet) continue;
 
-                    const wallet = JSON.parse(user.stellarWallet);
                     const oldVersion = user.encryptionKeyVersion;
 
                     try {
+                        const wallet = JSON.parse(user.stellarWallet);
+                        
                         // Decrypt with the old key version
                         const decryptedSecret = decrypt(
                             wallet.encryptedSecret,
@@ -80,6 +85,7 @@ export const startKeyRotationWorker = () => {
                         await new Promise(resolve => setTimeout(resolve, 20));
                     } catch (error) {
                         console.error(`Failed to rotate key for user ${user.id}`, error);
+                        failedIds.push(user.id);
                     }
                 }
             }

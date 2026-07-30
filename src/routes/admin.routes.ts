@@ -1,9 +1,20 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { keyRotationQueue } from '../queue/key-rotation.queue';
 
 const router = Router();
 
-// In a real app, this should be protected by admin authentication middleware
+const adminAuth = (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    const adminToken = process.env.ADMIN_TOKEN;
+    
+    if (!adminToken || !authHeader || authHeader !== `Bearer ${adminToken}`) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    next();
+};
+
+router.use(adminAuth);
 router.post('/key-rotation/start', async (req, res) => {
     try {
         const activeJobs = await keyRotationQueue.getActiveCount();

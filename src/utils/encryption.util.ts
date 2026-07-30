@@ -5,7 +5,11 @@ const ALGORITHM = 'aes-256-gcm';
 
 function getKeyBuffer(version?: number): Buffer {
     const keyVersion = version || 1;
-    const keyString = config.ENCRYPTION_KEYS[keyVersion] || config.ENCRYPTION_KEY;
+    let keyString = config.ENCRYPTION_KEYS[keyVersion];
+    
+    if (!keyString && keyVersion === 1) {
+        keyString = config.ENCRYPTION_KEY;
+    }
 
     if (!keyString || keyString.length !== 64) {
         throw new Error(`Encryption key for version ${keyVersion} is not set or must be a 64-character hex string (32 bytes).`);
