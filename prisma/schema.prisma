@@ -13,7 +13,8 @@ model User {
   // phone numbers never reach the database.
   phoneNumber          String?
   // HMAC-SHA256 of the plaintext phone number, used for lookups and to
-  // enforce uniqueness on encrypted data.
+  // enforce uniqueness on encrypted data. Nullable because users without a
+  // stored phone number never get a hash.
   phoneNumberHash      String?        @unique
   username             String?        @unique
   stellarWallet        String?        @unique // JSON: {"publicKey":"...","encryptedSecret":"...","iv":"...","authTag":"...", "keyVersion": 1}

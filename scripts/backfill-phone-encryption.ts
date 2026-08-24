@@ -17,6 +17,7 @@ async function main() {
     let cursor: string | undefined = undefined;
     let migrated = 0;
     let skipped = 0;
+    let raced = 0;
 
     // Iterate every user row (unfiltered, so cursor pagination stays stable
     // even as rows are updated).
@@ -27,6 +28,10 @@ async function main() {
             ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
             select: { id: true, phoneNumber: true },
         });
+
+        if (users.length === 0) {
+            break;
+        }
 
         for (const user of users) {
             cursor = user.id;
@@ -45,18 +50,27 @@ async function main() {
 
                 data.phoneNumberHash = hmacPhone(plaintextOf(user.phoneNumber));
 
-                await prisma.user.update({
-                    where: { id: user.id },
+                // Compare-and-set on the original stored value so a phone
+                // number updated mid-backfill is not overwritten with a stale
+                // encrypted copy.
+                const updated = await prisma.user.updateMany({
+                    where: { id: user.id, phoneNumber: user.phoneNumber },
                     data,
                 });
-                migrated++;
+
+                if (updated.count === 0) {
+                    console.warn(`Skipped user ${user.id}: phone number changed during backfill, will be picked up on re-run.`);
+                    raced++;
+                } else {
+                    migrated++;
+                }
             } catch (error) {
                 console.error(`Failed to encrypt phone number for user ID: ${user.id}`, error);
             }
         }
     } while (cursor);
 
-    console.log(`Backfill completed. Migrated ${migrated} phone numbers, skipped ${skipped} rows.`);
+    console.log(`Backfill completed. Migrated ${migrated} phone numbers, skipped ${skipped} rows, raced ${raced}.`);
 }
 
 main()

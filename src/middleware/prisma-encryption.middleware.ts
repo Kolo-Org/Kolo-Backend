@@ -16,13 +16,18 @@ type PrismaAction =
     | 'aggregate'
     | 'groupBy';
 
-const WRITE_ACTIONS: PrismaAction[] = ['create', 'update', 'upsert'];
-const READ_RESULT_ACTIONS: PrismaAction[] = [
+const WRITE_ACTIONS: PrismaAction[] = ['create', 'createMany', 'update', 'updateMany', 'upsert'];
+// Writes return the affected rows, which now carry ciphertext — they must be
+// decrypted before the caller sees them, same as reads.
+const RESULT_ACTIONS: PrismaAction[] = [
     'findUnique',
     'findUniqueOrThrow',
     'findFirst',
     'findFirstOrThrow',
     'findMany',
+    'create',
+    'update',
+    'upsert',
 ];
 
 function looksLikePlaintextPhone(value: unknown): value is string {
@@ -79,7 +84,18 @@ function encryptDataPayload(data: Record<string, any>): Record<string, any> {
     return payload;
 }
 
-// Decrypts phone numbers on query results before they reach the caller.
+// Values that must never be copied or recursed into during decryption.
+function isOpaqueValue(value: any): boolean {
+    return (
+        value instanceof Date ||
+        Buffer.isBuffer(value) ||
+        typeof value?.toFixed === 'function' && typeof value?.dp === 'function' // Prisma Decimal
+    );
+}
+
+// Recursively decrypts phone numbers on query results before they reach the
+// caller. Traverses relations and arrays so nested user objects (e.g.
+// GroupMember rows including their user) come back readable too.
 function decryptResult(result: any): any {
     if (result === null || result === undefined) {
         return result;
@@ -90,21 +106,39 @@ function decryptResult(result: any): any {
     }
 
     if (typeof result === 'object') {
-        const copy = { ...result } as Record<string, any>;
+        if (isOpaqueValue(result)) {
+            return result;
+        }
 
-        if (typeof copy.phoneNumber === 'string' && isEncryptedFieldBlob(copy.phoneNumber)) {
-            try {
-                copy.phoneNumber = decryptField(copy.phoneNumber);
-            } catch (err) {
-                console.error('Failed to decrypt user phone number:', err);
+        const copy: Record<string, any> = {};
+        let changed = false;
+
+        for (const [key, value] of Object.entries(result)) {
+            if (typeof value === 'string' && isEncryptedFieldBlob(value)) {
+                try {
+                    copy[key] = decryptField(value);
+                    changed = true;
+                } catch (err) {
+                    console.error(`Failed to decrypt encrypted field '${key}':`, err);
+                    copy[key] = value;
+                }
+                continue;
             }
+
+            if (value !== null && typeof value === 'object' && !isOpaqueValue(value)) {
+                const decryptedChild = decryptResult(value);
+                copy[key] = decryptedChild;
+                if (decryptedChild !== value) {
+                    changed = true;
+                }
+                continue;
+            }
+
+            copy[key] = value;
         }
 
-        if (copy.user) {
-            copy.user = decryptResult(copy.user);
-        }
-
-        return copy;
+        // Preserve object identity when nothing was decrypted.
+        return changed ? copy : result;
     }
 
     return result;
@@ -139,9 +173,9 @@ export function applyEncryptionMiddleware(prismaClient: PrismaClient): void {
         const result = await next(params);
 
         // Relation reads (e.g. GroupMember with include: { user: true }) also
-        // carry encrypted phone numbers, so decryption is not limited to the
-        // User model.
-        if (READ_RESULT_ACTIONS.includes(action)) {
+        // carry encrypted phone numbers, and writes return the stored rows —
+        // so result decryption is not limited to the User model.
+        if (RESULT_ACTIONS.includes(action)) {
             return decryptResult(result);
         }
 

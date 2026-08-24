@@ -78,7 +78,7 @@ interface EncryptedFieldBlob {
 function getHmacKeyBuffer(): Buffer {
     const keyString = config.HMAC_KEY;
 
-    if (!keyString || keyString.length !== 64) {
+    if (!keyString || !/^[\da-f]{64}$/i.test(keyString)) {
         throw new Error('HMAC_KEY is not set or must be a 64-character hex string (32 bytes).');
     }
 

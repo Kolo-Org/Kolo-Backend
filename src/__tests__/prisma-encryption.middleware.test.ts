@@ -107,6 +107,19 @@ describe('prisma-encryption.middleware', () => {
             const created = await run(middleware, { model: 'User', action: 'create', args: { data: { phoneNumber: TEST_PHONE } }, dataPath: [], runInTransaction: false });
 
             expect(created).toMatchObject({ id: 'user-1' });
+            // Write results are decrypted too — callers pass these straight to
+            // WhatsApp sends, so ciphertext here would leak downstream.
+            expect(created.phoneNumber).toBe(TEST_PHONE);
+        });
+
+        it('decrypts the updated row returned by update', async () => {
+            const { middleware } = captureMiddleware();
+            await run(middleware, { model: 'User', action: 'create', args: { data: { phoneNumber: TEST_PHONE } }, dataPath: [], runInTransaction: false });
+
+            const updated = await run(middleware, { model: 'User', action: 'update', args: { where: { id: 'user-1' }, data: { language: 'yo' } }, dataPath: [], runInTransaction: false });
+
+            expect(updated.language).toBe('yo');
+            expect(updated.phoneNumber).toBe(TEST_PHONE);
         });
 
         it('does not double-encrypt an already encrypted blob on update', async () => {
@@ -255,7 +268,7 @@ describe('prisma-encryption.middleware', () => {
 
             const user = await run(middleware, { model: 'User', action: 'findUnique', args: { where: { id: 'user-bad' } }, dataPath: [], runInTransaction: false });
 
-            expect(consoleError).toHaveBeenCalledWith('Failed to decrypt user phone number:', expect.anything());
+            expect(consoleError).toHaveBeenCalledWith("Failed to decrypt encrypted field 'phoneNumber':", expect.anything());
             expect(user.phoneNumber).toBe('{"c":"xx","iv":"yy","tag":"zz"}');
             consoleError.mockRestore();
         });
@@ -270,6 +283,33 @@ describe('prisma-encryption.middleware', () => {
             const members = await run(middleware, { model: 'GroupMember', action: 'findMany', args: { where: { groupId: 'group-1' }, include: { user: true } }, dataPath: [], runInTransaction: false });
 
             expect(members[0].user.phoneNumber).toBe(TEST_PHONE);
+        });
+
+        it('decrypts nested relations on single-row results (findUnique/update)', async () => {
+            const { middleware } = captureMiddleware();
+            await run(middleware, { model: 'User', action: 'create', args: { data: { phoneNumber: TEST_PHONE } }, dataPath: [], runInTransaction: false });
+
+            const memberWithUser = { id: 'member-1', user: JSON.parse(Array.from(store.values())[0]) };
+            next.mockImplementationOnce(async () => memberWithUser);
+
+            const member = await run(middleware, { model: 'GroupMember', action: 'findUnique', args: { where: { id: 'member-1' } }, dataPath: [], runInTransaction: false });
+
+            expect(member.user.phoneNumber).toBe(TEST_PHONE);
+        });
+
+        it('preserves Dates, Buffers and Decimals while traversing results', async () => {
+            const { middleware } = captureMiddleware();
+
+            const when = new Date('2026-01-01T00:00:00Z');
+            const blob = Buffer.from('binary');
+            const amount = { toFixed: () => '10.00', dp: 2 }; // Decimal-shaped
+            next.mockImplementationOnce(async () => ({ createdAt: when, payload: blob, amount }));
+
+            const row = await run(middleware, { model: 'GroupMember', action: 'findUnique', args: {}, dataPath: [], runInTransaction: false });
+
+            expect(row.createdAt).toBe(when);
+            expect(Buffer.isBuffer(row.payload)).toBe(true);
+            expect(row.amount).toBe(amount);
         });
 
         it('tolerates an upsert without a where clause', async () => {
