@@ -3,8 +3,10 @@ import { config } from '../config/env';
 import { PrismaClient } from '@prisma/client';
 import { sorobanService } from '../services/soroban.service';
 import { observabilityService } from '../services/observability.service';
+import { applyEncryptionMiddleware } from '../middleware/prisma-encryption.middleware';
 
 const prisma = new PrismaClient();
+applyEncryptionMiddleware(prisma);
 const connection = { url: config.REDIS_URL };
 
 let workerInstance: Worker | null = null;

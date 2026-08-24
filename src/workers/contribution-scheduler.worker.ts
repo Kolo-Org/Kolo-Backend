@@ -5,8 +5,10 @@ import { WhatsAppService } from '../services/whatsapp.service';
 import { PayoutService } from '../services/payout.service';
 import { enqueueDelayedReminder, enqueueCycleEnd } from '../queue/contribution-scheduler.queue';
 import { redisClient } from '../lib/redis';
+import { applyEncryptionMiddleware } from '../middleware/prisma-encryption.middleware';
 
 const prisma = new PrismaClient();
+applyEncryptionMiddleware(prisma);
 const connection = { url: config.REDIS_URL };
 
 let workerInstance: Worker | null = null;
