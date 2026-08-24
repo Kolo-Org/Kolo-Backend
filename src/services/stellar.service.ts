@@ -313,12 +313,12 @@ export class StellarService {
      * Returns the transaction hash and the claimable balance ID.
      */
     public async createClaimableBalanceWithHold(
-        sourceSecret: string,
+        sourceSecret: Buffer,
         requesterPublicKey: string,
         amount: string,
         reclaimSeconds: number = 3600,
     ): Promise<{ hash: string; balanceId: string }> {
-        const sourceKeypair = StellarSdk.Keypair.fromSecret(sourceSecret);
+        const sourceKeypair = StellarSdk.Keypair.fromRawEd25519Seed(sourceSecret);
         const sourceAccount = await this.server.loadAccount(sourceKeypair.publicKey());
 
         const now = Math.floor(Date.now() / 1000);
@@ -356,8 +356,8 @@ export class StellarService {
      * payment request flow when the confirmation window elapses and the
      * requester collects the held funds.
      */
-    public async claimClaimableBalance(sourceSecret: string, balanceId: string): Promise<{ hash: string }> {
-        const sourceKeypair = StellarSdk.Keypair.fromSecret(sourceSecret);
+    public async claimClaimableBalance(sourceSecret: Buffer, balanceId: string): Promise<{ hash: string }> {
+        const sourceKeypair = StellarSdk.Keypair.fromRawEd25519Seed(sourceSecret);
         const sourceAccount = await this.server.loadAccount(sourceKeypair.publicKey());
 
         const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {

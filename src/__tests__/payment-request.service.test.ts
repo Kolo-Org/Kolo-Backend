@@ -54,7 +54,7 @@ describe('PaymentRequestService', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        mockDecrypt.mockReturnValue('S_RESPONDER_SECRET');
+        mockDecrypt.mockReturnValue(Buffer.from('responder-seed'));
         mockStellar = {
             createClaimableBalanceWithHold: jest.fn().mockResolvedValue({ hash: 'HOLD_HASH', balanceId: 'CB-123' }),
             claimClaimableBalance: jest.fn().mockResolvedValue({ hash: 'CLAIM_HASH' }),
@@ -109,7 +109,7 @@ describe('PaymentRequestService', () => {
             });
             expect(mockDecrypt).toHaveBeenCalledWith('ENC', 'IV', 'TAG');
             expect(mockStellar.createClaimableBalanceWithHold).toHaveBeenCalledWith(
-                'S_RESPONDER_SECRET',
+                Buffer.from('responder-seed'),
                 'G_REQ',
                 '50',
                 3600,
@@ -142,6 +142,45 @@ describe('PaymentRequestService', () => {
 
             await expect(service.acceptRequest('pr-1', '2222')).rejects.toMatchObject({ code: 'not_pending' });
             expect(mockStellar.createClaimableBalanceWithHold).not.toHaveBeenCalled();
+        });
+
+        it('never returns to PENDING when the hold succeeded but recording failed', async () => {
+            const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+            const request = makeRequest();
+            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(request);
+            (prisma.paymentRequest.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+            // Every attempt to record the ACCEPTED state fails.
+            (prisma.paymentRequest.update as jest.Mock).mockRejectedValue(new Error('db down'));
+
+            await expect(service.acceptRequest('pr-1', '2222')).rejects.toThrow('db down');
+
+            // The escrow is funded on-chain, so the request must NOT be
+            // released back to PENDING — that would allow a second hold.
+            expect(prisma.paymentRequest.updateMany).not.toHaveBeenCalledWith({
+                where: { id: 'pr-1', status: 'HOLDING' },
+                data: { status: 'PENDING' },
+            });
+            // The recording write was retried before giving up.
+            expect(prisma.paymentRequest.update).toHaveBeenCalledTimes(3);
+            expect(consoleError).toHaveBeenCalledWith(
+                expect.stringContaining('CRITICAL'),
+                expect.anything(),
+            );
+            consoleError.mockRestore();
+        }, 15000);
+
+        it('releases the claim back to PENDING only when the Stellar call itself fails', async () => {
+            const request = makeRequest();
+            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(request);
+            (prisma.paymentRequest.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+            mockStellar.createClaimableBalanceWithHold.mockRejectedValue(new Error('horizon down'));
+
+            await expect(service.acceptRequest('pr-1', '2222')).rejects.toThrow('horizon down');
+
+            expect(prisma.paymentRequest.updateMany).toHaveBeenCalledWith({
+                where: { id: 'pr-1', status: 'HOLDING' },
+                data: { status: 'PENDING' },
+            });
         });
 
         it('rejects acceptance by anyone who is not the responder', async () => {
@@ -221,7 +260,8 @@ describe('PaymentRequestService', () => {
             });
             // The requester's own secret claims the balance
             expect(mockDecrypt).toHaveBeenCalledWith('ENC2', 'IV2', 'TAG2');
-            expect(mockStellar.claimClaimableBalance).toHaveBeenCalledWith('S_RESPONDER_SECRET', 'CB-123');
+            expect(mockDecrypt).toHaveBeenCalledTimes(1);
+            expect(mockStellar.claimClaimableBalance).toHaveBeenCalledWith(Buffer.from('responder-seed'), 'CB-123');
             expect(result.status).toBe('COMPLETED');
         });
 

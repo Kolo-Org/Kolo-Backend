@@ -6,6 +6,9 @@ export const MAX_PENDING_REQUESTS_PER_USER = 5;
 const REQUEST_TTL_HOURS = 24;
 const CONFIRMATION_WINDOW_SECONDS = 5 * 60;
 const RECLAIM_WINDOW_SECONDS = 60 * 60;
+// Retries for recording a successfully placed escrow hold.
+const RECORD_RETRIES = 3;
+const RETRY_DELAY_MS = 200;
 
 /** Error thrown when a payment request cannot be accepted in its current state. */
 export class PaymentRequestError extends Error {
@@ -83,30 +86,56 @@ export class PaymentRequestService {
             throw new PaymentRequestError('not_pending');
         }
 
+        let hash: string;
+        let balanceId: string;
         try {
             const secret = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
-            const { hash, balanceId } = await this.stellarService.createClaimableBalanceWithHold(
+            ({ hash, balanceId } = await this.stellarService.createClaimableBalanceWithHold(
                 secret,
                 this.parseWallet(request.requester.stellarWallet)?.publicKey ?? '',
                 String(request.amount),
                 RECLAIM_WINDOW_SECONDS,
-            );
-
-            const accepted = await prisma.paymentRequest.update({
-                where: { id: request.id },
-                data: { status: 'ACCEPTED', balanceId },
-            });
-
-            return { request: accepted, balanceId, hash };
+            ));
         } catch (err) {
-            // No hold was placed (or it failed mid-flight) — release our claim
-            // so the request stays answerable.
+            // The Stellar call failed, so no funds are locked — release our
+            // claim so the request stays answerable.
             await prisma.paymentRequest.updateMany({
                 where: { id: request.id, status: 'HOLDING' },
                 data: { status: 'PENDING' },
             }).catch(() => undefined);
             throw err;
         }
+
+        // The hold is live on-chain. From here on we must never go back to
+        // PENDING — that would let a second ACCEPT lock the funds twice. Retry
+        // the recording write; if it still fails the request stays in HOLDING
+        // (blocked from accept/decline/expire) with the balance ID logged for
+        // recovery.
+        let accepted: any = null;
+        let lastError: unknown;
+        for (let attempt = 0; attempt < RECORD_RETRIES; attempt++) {
+            try {
+                accepted = await prisma.paymentRequest.update({
+                    where: { id: request.id },
+                    data: { status: 'ACCEPTED', balanceId },
+                });
+                break;
+            } catch (err) {
+                lastError = err;
+                await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * (attempt + 1)));
+            }
+        }
+
+        if (!accepted) {
+            console.error(
+                `CRITICAL: escrow ${balanceId} is funded for payment request ${request.id} but could not be recorded ` +
+                `(status stuck in HOLDING). Manual recovery required.`,
+                lastError,
+            );
+            throw lastError;
+        }
+
+        return { request: accepted, balanceId, hash };
     }
 
     /** Marks a request declined. Only the respondent of a pending request may decline. */
