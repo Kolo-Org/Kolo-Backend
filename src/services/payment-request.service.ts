@@ -19,6 +19,9 @@ export class PaymentRequestError extends Error {
  * Tracks P2P payment requests and moves funds through a Stellar claimable
  * balance escrow when the respondent accepts:
  * accept → hold (claimable balance) → confirmation window → requester claims.
+ *
+ * State transitions are guarded by conditional updates so concurrent ACCEPTs,
+ * declines and completions can never double-place or double-claim an escrow.
  */
 export class PaymentRequestService {
     private stellarService: StellarService;
@@ -50,8 +53,9 @@ export class PaymentRequestService {
     }
 
     /**
-     * Places the escrow hold and schedules the automatic completion. Only the
-     * respondent of a still-pending, unexpired request can accept it.
+     * Places the escrow hold for the respondent of a still-pending, unexpired
+     * request. The status moves PENDING → HOLDING atomically before any Stellar
+     * call, so two simultaneous accepts cannot both place a hold.
      */
     public async acceptRequest(
         requestId: string,
@@ -70,69 +74,125 @@ export class PaymentRequestService {
             throw new PaymentRequestError('insufficient_balance');
         }
 
-        const secret = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
-        const { hash, balanceId } = await this.stellarService.createClaimableBalanceWithHold(
-            secret,
-            request.requester.stellarWallet ? this.parseWallet(request.requester.stellarWallet)?.publicKey ?? '' : '',
-            String(request.amount),
-            RECLAIM_WINDOW_SECONDS,
-        );
-
-        const accepted = await prisma.paymentRequest.update({
-            where: { id: request.id },
-            data: { status: 'ACCEPTED', balanceId },
+        // Atomically claim the right to place the hold.
+        const claimed = await prisma.paymentRequest.updateMany({
+            where: { id: request.id, status: 'PENDING' },
+            data: { status: 'HOLDING' },
         });
+        if (claimed.count === 0) {
+            throw new PaymentRequestError('not_pending');
+        }
 
-        return { request: accepted, balanceId, hash };
+        try {
+            const secret = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
+            const { hash, balanceId } = await this.stellarService.createClaimableBalanceWithHold(
+                secret,
+                this.parseWallet(request.requester.stellarWallet)?.publicKey ?? '',
+                String(request.amount),
+                RECLAIM_WINDOW_SECONDS,
+            );
+
+            const accepted = await prisma.paymentRequest.update({
+                where: { id: request.id },
+                data: { status: 'ACCEPTED', balanceId },
+            });
+
+            return { request: accepted, balanceId, hash };
+        } catch (err) {
+            // No hold was placed (or it failed mid-flight) — release our claim
+            // so the request stays answerable.
+            await prisma.paymentRequest.updateMany({
+                where: { id: request.id, status: 'HOLDING' },
+                data: { status: 'PENDING' },
+            }).catch(() => undefined);
+            throw err;
+        }
     }
 
     /** Marks a request declined. Only the respondent of a pending request may decline. */
     public async declineRequest(requestId: string, respondentPhoneNumber: string): Promise<any> {
-        await this.loadForResponder(requestId, respondentPhoneNumber);
+        const request = await this.loadForResponder(requestId, respondentPhoneNumber);
 
-        return prisma.paymentRequest.update({
-            where: { id: requestId },
+        // Conditional transition: a request being accepted right now can no
+        // longer be declined.
+        const declined = await prisma.paymentRequest.updateMany({
+            where: { id: requestId, status: 'PENDING' },
             data: { status: 'DECLINED' },
-            include: { requester: true, responder: true },
         });
+        if (declined.count === 0) {
+            throw new PaymentRequestError('not_pending');
+        }
+
+        return prisma.paymentRequest.findUnique({
+            where: { id: requestId },
+            include: { requester: true, responder: true },
+        }) as Promise<any>;
     }
 
     /**
      * Called after the confirmation window: the requester claims the held
-     * balance, completing the transfer.
+     * balance, completing the transfer. The ACCEPTED → COMPLETING transition is
+     * atomic, so a retried job can never submit a duplicate claim; a failed
+     * claim reverts to ACCEPTED for later retries.
      */
     public async completeRequest(requestId: string): Promise<any> {
-        const request = await prisma.paymentRequest.findUnique({
-            where: { id: requestId },
-            include: { requester: true },
-        });
-        if (!request || request.status !== 'ACCEPTED' || !request.balanceId) {
+        const request = await prisma.paymentRequest.findUnique({ where: { id: requestId } });
+        if (!request || !request.balanceId) {
             return null;
         }
 
-        const wallet = this.parseWallet(request.requester.stellarWallet);
-        if (!wallet) return null;
-
-        const secret = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
-        const { hash } = await this.stellarService.claimClaimableBalance(secret, request.balanceId);
-
-        return prisma.paymentRequest.update({
-            where: { id: requestId },
-            data: { status: 'COMPLETED', transactionHash: hash },
+        const starting = await prisma.paymentRequest.updateMany({
+            where: { id: requestId, status: 'ACCEPTED' },
+            data: { status: 'COMPLETING' },
         });
+        if (starting.count === 0) {
+            // Already completed, expired, or another job is claiming it.
+            return null;
+        }
+
+        const requesterWallet = await prisma.user.findUnique({
+            where: { id: request.requesterId },
+            select: { stellarWallet: true },
+        });
+        const wallet = this.parseWallet(requesterWallet?.stellarWallet ?? null);
+        if (!wallet) {
+            await this.revertToAccepted(requestId);
+            return null;
+        }
+
+        try {
+            const secret = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
+            const { hash } = await this.stellarService.claimClaimableBalance(secret, request.balanceId);
+
+            return prisma.paymentRequest.update({
+                where: { id: requestId },
+                data: { status: 'COMPLETED', transactionHash: hash },
+            });
+        } catch (err) {
+            console.error(`Failed to claim balance for payment request ${requestId}:`, err);
+            await this.revertToAccepted(requestId);
+            throw err;
+        }
     }
 
     /** Expires stale pending requests; returns null when nothing changed. */
     public async expireIfPending(requestId: string): Promise<any> {
-        const request = await prisma.paymentRequest.findUnique({ where: { id: requestId } });
-        if (!request || request.status !== 'PENDING') {
+        const expired = await prisma.paymentRequest.updateMany({
+            where: { id: requestId, status: 'PENDING' },
+            data: { status: 'EXPIRED' },
+        });
+        if (expired.count === 0) {
             return null;
         }
 
-        return prisma.paymentRequest.update({
-            where: { id: requestId },
-            data: { status: 'EXPIRED' },
-        });
+        return prisma.paymentRequest.findUnique({ where: { id: requestId } });
+    }
+
+    private async revertToAccepted(requestId: string): Promise<void> {
+        await prisma.paymentRequest.updateMany({
+            where: { id: requestId, status: 'COMPLETING' },
+            data: { status: 'ACCEPTED' },
+        }).catch(() => undefined);
     }
 
     private async loadForResponder(requestId: string, respondentPhoneNumber: string) {

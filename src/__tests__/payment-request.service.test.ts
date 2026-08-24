@@ -7,7 +7,11 @@ jest.mock('../lib/prisma', () => ({
             create: jest.fn(),
             findUnique: jest.fn(),
             update: jest.fn(),
+            updateMany: jest.fn(),
             count: jest.fn(),
+        },
+        user: {
+            findUnique: jest.fn(),
         },
     },
 }));
@@ -91,13 +95,18 @@ describe('PaymentRequestService', () => {
         it('verifies balance, places the escrow hold and stores the balance ID', async () => {
             const request = makeRequest();
             (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(request);
+            (prisma.paymentRequest.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
             (prisma.paymentRequest.update as jest.Mock).mockResolvedValue({ ...request, status: 'ACCEPTED', balanceId: 'CB-123' });
 
             const result = await service.acceptRequest('pr-1', '2222');
 
             // Balance was checked before locking funds
             expect(mockStellar.checkBalance).toHaveBeenCalledWith('G_RESP');
-            // Hold created from the respondent's wallet for the requester
+            // The PENDING → HOLDING transition happened before any Stellar call
+            expect(prisma.paymentRequest.updateMany).toHaveBeenCalledWith({
+                where: { id: 'pr-1', status: 'PENDING' },
+                data: { status: 'HOLDING' },
+            });
             expect(mockDecrypt).toHaveBeenCalledWith('ENC', 'IV', 'TAG');
             expect(mockStellar.createClaimableBalanceWithHold).toHaveBeenCalledWith(
                 'S_RESPONDER_SECRET',
@@ -110,6 +119,29 @@ describe('PaymentRequestService', () => {
                 data: expect.objectContaining({ status: 'ACCEPTED', balanceId: 'CB-123' }),
             }));
             expect(result.hash).toBe('HOLD_HASH');
+        });
+
+        it('releases the hold claim when placing the escrow fails', async () => {
+            const request = makeRequest();
+            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(request);
+            (prisma.paymentRequest.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+            mockStellar.createClaimableBalanceWithHold.mockRejectedValue(new Error('horizon down'));
+
+            await expect(service.acceptRequest('pr-1', '2222')).rejects.toThrow('horizon down');
+
+            expect(prisma.paymentRequest.updateMany).toHaveBeenCalledWith({
+                where: { id: 'pr-1', status: 'HOLDING' },
+                data: { status: 'PENDING' },
+            });
+        });
+
+        it('refuses a second accept once another one claimed the transition', async () => {
+            const request = makeRequest();
+            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(request);
+            (prisma.paymentRequest.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
+
+            await expect(service.acceptRequest('pr-1', '2222')).rejects.toMatchObject({ code: 'not_pending' });
+            expect(mockStellar.createClaimableBalanceWithHold).not.toHaveBeenCalled();
         });
 
         it('rejects acceptance by anyone who is not the responder', async () => {
@@ -152,14 +184,14 @@ describe('PaymentRequestService', () => {
         it('marks the request declined for the correct responder', async () => {
             const request = makeRequest();
             (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(request);
-            (prisma.paymentRequest.update as jest.Mock).mockResolvedValue({ ...request, status: 'DECLINED' });
+            (prisma.paymentRequest.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
 
             await service.declineRequest('pr-1', '2222');
 
-            expect(prisma.paymentRequest.update).toHaveBeenCalledWith(expect.objectContaining({
-                where: { id: 'pr-1' },
+            expect(prisma.paymentRequest.updateMany).toHaveBeenCalledWith({
+                where: { id: 'pr-1', status: 'PENDING' },
                 data: { status: 'DECLINED' },
-            }));
+            });
         });
 
         it('prevents declining someone else\'s request', async () => {
@@ -171,54 +203,75 @@ describe('PaymentRequestService', () => {
 
     describe('completeRequest', () => {
         it('claims the held balance for the requester and records the hash', async () => {
-            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(
-                makeRequest({ status: 'ACCEPTED', balanceId: 'CB-123' })
-            );
+            (prisma.paymentRequest.findUnique as jest.Mock)
+                .mockResolvedValueOnce(makeRequest({ status: 'ACCEPTED', balanceId: 'CB-123' }))
+                .mockResolvedValueOnce(makeRequest({ status: 'COMPLETED', transactionHash: 'CLAIM_HASH' }));
+            (prisma.paymentRequest.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+            (prisma.user.findUnique as jest.Mock).mockResolvedValue({ stellarWallet: REQUESTER_WALLET });
             (prisma.paymentRequest.update as jest.Mock).mockResolvedValue({
                 status: 'COMPLETED', transactionHash: 'CLAIM_HASH',
             });
 
             const result = await service.completeRequest('pr-1');
 
-            expect(mockStellar.claimClaimableBalance).toHaveBeenCalledWith('S_RESPONDER_SECRET', 'CB-123');
+            // ACCEPTED → COMPLETING claimed atomically before the Stellar call
+            expect(prisma.paymentRequest.updateMany).toHaveBeenCalledWith({
+                where: { id: 'pr-1', status: 'ACCEPTED' },
+                data: { status: 'COMPLETING' },
+            });
             // The requester's own secret claims the balance
             expect(mockDecrypt).toHaveBeenCalledWith('ENC2', 'IV2', 'TAG2');
-            expect(prisma.paymentRequest.update).toHaveBeenCalledWith(expect.objectContaining({
-                data: { status: 'COMPLETED', transactionHash: 'CLAIM_HASH' },
-            }));
+            expect(mockStellar.claimClaimableBalance).toHaveBeenCalledWith('S_RESPONDER_SECRET', 'CB-123');
             expect(result.status).toBe('COMPLETED');
         });
 
         it('does nothing when the request is not in ACCEPTED state', async () => {
             (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(makeRequest());
+            (prisma.paymentRequest.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
 
             const result = await service.completeRequest('pr-1');
 
             expect(result).toBeNull();
             expect(mockStellar.claimClaimableBalance).not.toHaveBeenCalled();
         });
+
+        it('reverts to ACCEPTED when the claim fails, so jobs can retry', async () => {
+            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(
+                makeRequest({ status: 'ACCEPTED', balanceId: 'CB-123' })
+            );
+            (prisma.paymentRequest.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+            (prisma.user.findUnique as jest.Mock).mockResolvedValue({ stellarWallet: REQUESTER_WALLET });
+            mockStellar.claimClaimableBalance.mockRejectedValue(new Error('network'));
+
+            await expect(service.completeRequest('pr-1')).rejects.toThrow('network');
+
+            expect(prisma.paymentRequest.updateMany).toHaveBeenCalledWith({
+                where: { id: 'pr-1', status: 'COMPLETING' },
+                data: { status: 'ACCEPTED' },
+            });
+        });
     });
 
     describe('expireIfPending', () => {
         it('expires a stale pending request', async () => {
-            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(makeRequest());
-            (prisma.paymentRequest.update as jest.Mock).mockResolvedValue({ status: 'EXPIRED' });
+            (prisma.paymentRequest.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(makeRequest({ status: 'EXPIRED' }));
 
             const result = await service.expireIfPending('pr-1');
 
-            expect(prisma.paymentRequest.update).toHaveBeenCalledWith(expect.objectContaining({
+            expect(prisma.paymentRequest.updateMany).toHaveBeenCalledWith({
+                where: { id: 'pr-1', status: 'PENDING' },
                 data: { status: 'EXPIRED' },
-            }));
+            });
             expect(result.status).toBe('EXPIRED');
         });
 
         it('leaves accepted requests alone (funds already in escrow)', async () => {
-            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(makeRequest({ status: 'ACCEPTED' }));
+            (prisma.paymentRequest.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
 
             const result = await service.expireIfPending('pr-1');
 
             expect(result).toBeNull();
-            expect(prisma.paymentRequest.update).not.toHaveBeenCalled();
         });
     });
 });

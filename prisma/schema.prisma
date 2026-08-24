@@ -111,7 +111,7 @@ model PaymentRequest {
   responderId     String
   amount          Decimal
   assetCode       String   @default("XLM")
-  status          String   @default("PENDING") // PENDING, ACCEPTED, DECLINED, EXPIRED, COMPLETED
+  status          String   @default("PENDING") // PENDING, HOLDING, ACCEPTED, COMPLETING, DECLINED, EXPIRED, COMPLETED
   expiresAt       DateTime
   balanceId       String?  // Stellar claimable balance ID once the hold is placed
   transactionHash String?

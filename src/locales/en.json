@@ -30,7 +30,7 @@
     "request": {
         "usage": "Usage: REQUEST <amount> <@username or phone>",
         "no_user": "Error: Could not find user {{target}}.",
-        "notify_recipient": "🔔 [REQUEST] {{sender}} is requesting {{amount}} XLM from you. Reply with: SEND {{amount}} {{senderPhone}}",
+        "notify_recipient": "🔔 [REQUEST] {{sender}} is requesting {{amount}} XLM from you.\n\nReply with:\nACCEPT {{requestId}} to approve (funds are held securely in escrow)\nDECLINE {{requestId}} to reject",
         "confirmation": "[REQUEST] Request for {{amount}} XLM sent to {{target}}."
     },
     "create_group": {
@@ -110,12 +110,12 @@
     "payment_request": {
         "accept_usage": "Usage: ACCEPT <requestId>",
         "decline_usage": "Usage: DECLINE <requestId>",
-        "accepted": "✅ Escrow hold placed! {amount} {asset} is now locked for this request.\n\nIf everything looks right, the requester will receive it in about {minutes} minutes.\n\nMade a mistake? You have {reclaimHours} hour to reclaim your funds from the escrow.\nTx: https://stellar.expert/explorer/testnet/tx/{hash}",
-        "declined": "🙎 {respondent} declined your request for {amount} {asset}.",
+        "accepted": "✅ Escrow hold placed! {{amount}} {{asset}} is now locked for this request.\n\nIf everything looks right, the requester will receive it in about {{minutes}} minutes.\n\nMade a mistake? You have {{reclaimHours}} hour to reclaim your funds from the escrow.\nTx: https://stellar.expert/explorer/testnet/tx/{{hash}}",
+        "declined": "🙎 {{respondent}} declined your request for {{amount}} {{asset}}.",
         "decline_confirmed": "Request declined. The requester has been notified.",
-        "completed_requester": "💸 Your payment request of {amount} {asset} was completed and the funds are in your account.\nTx: https://stellar.expert/explorer/testnet/tx/{hash}",
-        "completed_responder": "✅ The confirmation window closed and {amount} {asset} was released to the requester. Thanks for using Kolo!",
-        "expired": "⏰ Your payment request for {amount} {asset} to {respondent} has expired without a response.",
+        "completed_requester": "💸 Your payment request of {{amount}} {{asset}} was completed and the funds are in your account.\nTx: https://stellar.expert/explorer/testnet/tx/{{hash}}",
+        "completed_responder": "✅ The confirmation window closed and {{amount}} {{asset}} was released to the requester. Thanks for using Kolo!",
+        "expired": "⏰ Your payment request for {{amount}} {{asset}} to {{respondent}} has expired without a response.",
         "error_not_found": "Could not find that payment request. Check the ID and try again.",
         "error_not_pending": "That request is no longer pending.",
         "error_expired": "That request has expired.",
