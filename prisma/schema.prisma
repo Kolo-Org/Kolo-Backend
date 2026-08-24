@@ -9,7 +9,12 @@ generator client {
 
 model User {
   id                   String         @id @default(uuid())
-  phoneNumber          String         @unique
+  // Stores the AES-256-GCM JSON blob produced by encryptField(); plaintext
+  // phone numbers never reach the database.
+  phoneNumber          String?
+  // HMAC-SHA256 of the plaintext phone number, used for lookups and to
+  // enforce uniqueness on encrypted data.
+  phoneNumberHash      String?        @unique
   username             String?        @unique
   stellarWallet        String?        @unique // JSON: {"publicKey":"...","encryptedSecret":"...","iv":"...","authTag":"...", "keyVersion": 1}
   encryptionKeyVersion Int            @default(1)
