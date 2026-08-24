@@ -3,6 +3,8 @@ import { StellarService } from './stellar.service';
 import { UserService } from './user.service';
 import { GroupService } from './group.service';
 import { PayoutService } from './payout.service';
+import { PaymentRequestService, PaymentRequestError } from './payment-request.service';
+import { scheduleRequestCompletion, scheduleRequestExpiry } from '../queue/payment-request.queue';
 import { decrypt } from '../utils/encryption.util';
 import { t, isSupportedLanguage, loadLocale } from './locale.service';
 import { redisClient } from '../lib/redis';
@@ -13,6 +15,7 @@ export class MessageProcessor {
     private userService: UserService;
     private groupService: GroupService;
     private payoutService: PayoutService;
+    private paymentRequestService: PaymentRequestService;
 
     constructor(
         whatsappService?: WhatsAppService,
@@ -20,12 +23,14 @@ export class MessageProcessor {
         userService?: UserService,
         groupService?: GroupService,
         payoutService?: PayoutService,
+        paymentRequestService?: PaymentRequestService,
     ) {
         this.whatsappService = whatsappService ?? new WhatsAppService();
         this.stellarService = stellarService ?? new StellarService();
         this.userService = userService ?? new UserService();
         this.groupService = groupService ?? new GroupService();
         this.payoutService = payoutService ?? new PayoutService();
+        this.paymentRequestService = paymentRequestService ?? new PaymentRequestService(this.stellarService);
     }
 
     /**
@@ -99,6 +104,10 @@ export class MessageProcessor {
                     return await this.handleSend(from, tokens.slice(1));
                 case 'REQUEST':
                     return await this.handleRequest(from, tokens.slice(1));
+                case 'ACCEPT':
+                    return await this.handleAcceptRequest(from, tokens.slice(1));
+                case 'DECLINE':
+                    return await this.handleDeclineRequest(from, tokens.slice(1));
                 case 'CONTRIBUTE':
                     return await this.handleContribute(from, tokens.slice(1));
                 case 'WITHDRAW':
@@ -351,6 +360,23 @@ export class MessageProcessor {
             );
         }
 
+        if (recipient.id === sender.id) {
+            return await this.whatsappService.sendMessage(from, t('payment_request.error_self_request', lang));
+        }
+
+        let created: { id: string; expiresAt: Date };
+        try {
+            created = await this.paymentRequestService.createRequest(sender.id, recipient.id, amount);
+        } catch (error: any) {
+            if (error instanceof PaymentRequestError && error.code === 'too_many_pending') {
+                return await this.whatsappService.sendMessage(from, t('payment_request.error_too_many_pending', lang));
+            }
+            throw error;
+        }
+
+        // Schedule expiry for the new request.
+        await scheduleRequestExpiry(created.id, created.expiresAt);
+
         const senderHandle = sender.username ? '@' + sender.username : sender.phoneNumber;
         await this.whatsappService.sendMessage(
             recipient.phoneNumber,
@@ -358,12 +384,82 @@ export class MessageProcessor {
                 sender: senderHandle,
                 amount,
                 senderPhone: sender.phoneNumber,
+                requestId: created.id,
             }),
         );
         await this.whatsappService.sendMessage(
             from,
             t('request.confirmation', lang, { amount, target }),
         );
+    }
+
+    private async handleAcceptRequest(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language ?? 'en';
+
+        if (args.length < 1) {
+            return await this.whatsappService.sendMessage(from, t('payment_request.accept_usage', lang));
+        }
+
+        try {
+            const { request, hash } = await this.paymentRequestService.acceptRequest(args[0], from);
+
+            await scheduleRequestCompletion(request.id);
+
+            return await this.whatsappService.sendMessage(
+                from,
+                t('payment_request.accepted', lang, {
+                    amount: String(request.amount),
+                    asset: request.assetCode,
+                    minutes: 5,
+                    reclaimHours: 1,
+                    hash,
+                }),
+            );
+        } catch (error: any) {
+            if (error instanceof PaymentRequestError) {
+                return await this.whatsappService.sendMessage(
+                    from,
+                    t(`payment_request.error_${error.code}`, lang),
+                );
+            }
+            throw error;
+        }
+    }
+
+    private async handleDeclineRequest(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language ?? 'en';
+
+        if (args.length < 1) {
+            return await this.whatsappService.sendMessage(from, t('payment_request.decline_usage', lang));
+        }
+
+        try {
+            const request = await this.paymentRequestService.declineRequest(args[0], from);
+
+            const requesterPhone = request.requester.phoneNumber;
+            if (requesterPhone) {
+                await this.whatsappService.sendMessage(
+                    requesterPhone,
+                    t('payment_request.declined', request.requester.language ?? 'en', {
+                        respondent: request.responder.username ? `@${request.responder.username}` : request.responder.phoneNumber ?? '',
+                        amount: String(request.amount),
+                        asset: request.assetCode,
+                    }),
+                );
+            }
+
+            return await this.whatsappService.sendMessage(from, t('payment_request.decline_confirmed', lang));
+        } catch (error: any) {
+            if (error instanceof PaymentRequestError) {
+                return await this.whatsappService.sendMessage(
+                    from,
+                    t(`payment_request.error_${error.code}`, lang),
+                );
+            }
+            throw error;
+        }
     }
 
     private async handleCreateGroup(from: string, args: string[]) {
