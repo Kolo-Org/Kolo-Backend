@@ -24,6 +24,8 @@ model User {
   updatedAt            DateTime       @updatedAt
   groups               GroupMember[]
   contributions        Contribution[]
+  sentPaymentRequests  PaymentRequest[] @relation("PaymentRequestRequester")
+  receivedPaymentRequests PaymentRequest[] @relation("PaymentRequestResponder")
 }
 
 enum DeploymentStatus {
@@ -105,6 +107,25 @@ model PayoutOrderLog {
   createdAt     DateTime     @default(now())
 
   @@index([groupId])
+}
+
+model PaymentRequest {
+  id              String   @id @default(uuid())
+  requester       User     @relation("PaymentRequestRequester", fields: [requesterId], references: [id])
+  requesterId     String
+  responder       User     @relation("PaymentRequestResponder", fields: [responderId], references: [id])
+  responderId     String
+  amount          Decimal
+  assetCode       String   @default("XLM")
+  status          String   @default("PENDING") // PENDING, HOLDING, ACCEPTED, COMPLETING, DECLINED, EXPIRED, COMPLETED
+  expiresAt       DateTime
+  balanceId       String?  // Stellar claimable balance ID once the hold is placed
+  transactionHash String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([responderId, status])
+  @@index([requesterId, status])
 }
 
 model SecretAccessLog {

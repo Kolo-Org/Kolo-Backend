@@ -41,6 +41,38 @@ describe('locale.service', () => {
             expect(t('help.text', 'en')).toContain('Kolo Commands');
         });
 
+        it('should interpolate the payment request accepted message with escrow details', async () => {
+            const { initI18n, t } = await import('../services/locale.service');
+            await initI18n();
+            const result = t('payment_request.accepted', 'en', {
+                amount: '50',
+                asset: 'XLM',
+                minutes: 5,
+                reclaimHours: 1,
+                hash: 'ABC123',
+            });
+            expect(result).toContain('50');
+            expect(result).toContain('Escrow');
+            expect(result).toContain('5');
+            // i18next interpolation must replace the placeholders, not leak them
+            expect(result).not.toContain('{{amount}}');
+            expect(result).toContain('https://stellar.expert/explorer/testnet/tx/ABC123');
+        });
+
+        it('should interpolate the request notification with the request ID for ACCEPT/DECLINE replies', async () => {
+            const { initI18n, t } = await import('../services/locale.service');
+            await initI18n();
+            const result = t('request.notify_recipient', 'en', {
+                sender: '@john',
+                amount: 50,
+                senderPhone: '1111',
+                requestId: 'REQ-1',
+            });
+            expect(result).toContain('ACCEPT REQ-1');
+            expect(result).toContain('DECLINE REQ-1');
+            expect(result).not.toContain('{{requestId}}');
+        });
+
         it('should return the English send success string with interpolation', async () => {
             const { initI18n, t } = await import('../services/locale.service');
             await initI18n();

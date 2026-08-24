@@ -1,110 +1,127 @@
 {
-  "balance": {
-    "no_wallet": "[BALANCE] Error: Wallet not configured.",
-    "success": "💰 Your Balances:\n{{balances}}",
-    "asset_not_found": "You don't have a trustline for {{asset}}."
-  },
-  "history": {
-    "fetching": "[HISTORY] Fetching transaction history for {{phone}}...",
-    "header": "📜 Transaction History (Last 10):\n\n",
-    "item_sent": "{{index}}. ✅ Sent {{amount}} {{asset}} to {{counterparty}}\n   {{date}} • tx: {{hash}}",
-    "item_received": "{{index}}. 📥 Received {{amount}} {{asset}} from {{counterparty}}\n   {{date}} • tx: {{hash}}",
-    "item_other": "{{index}}. 🔄 {{type}} ({{amount}} {{asset}})\n   {{date}} • tx: {{hash}}",
-    "more": "\nReply HISTORY MORE to see older transactions",
-    "no_more": "\nNo more transactions to show.",
-    "not_funded": "No transaction history — your wallet hasn't been funded yet",
-    "unavailable": "Transaction history is temporarily unavailable. Please try again later.",
-    "no_wallet": "Error: Your wallet is not configured."
-  },
-  "profile": {
-    "card": "*Kolo Profile*\nPhone: {{phone}}\nUsername: {{username}}\nWallet: {{wallet}}\nJoined: {{joined}}"
-  },
-  "send": {
-    "usage": "Usage: SEND <amount> <@username or phone>",
-    "no_wallet": "Error: Your wallet is not configured.",
-    "no_recipient": "Error: Could not find wallet for user {{target}}.",
-    "initiating": "[SEND] Initiating transfer of {{amount}} XLM to {{target}}...",
-    "success": "✅ Successfully sent {{amount}} XLM to {{target}}!",
-    "failed": "❌ [SEND] Failed: {{message}}"
-  },
-  "request": {
-    "usage": "Usage: REQUEST <amount> <@username or phone>",
-    "no_user": "Error: Could not find user {{target}}.",
-    "notify_recipient": "🔔 [REQUEST] {{sender}} is requesting {{amount}} XLM from you. Reply with: SEND {{amount}} {{senderPhone}}",
-    "confirmation": "[REQUEST] Request for {{amount}} XLM sent to {{target}}."
-  },
-  "create_group": {
-    "usage": "Usage: CREATE GROUP <name> <amount> <frequency>",
-    "success": "✅ Group \"{{name}}\" created!\nGroup ID: {{id}}",
-    "failed": "❌ Failed to create group: {{message}}"
-  },
-  "join_group": {
-    "usage": "Usage: JOIN GROUP <groupId>",
-    "success": "✅ Successfully joined group!",
-    "failed": "❌ Failed to join group: {{message}}"
-  },
-  "invite_member": {
-    "usage": "Usage: INVITE MEMBER <@username or phone>",
-    "no_user": "Error: Could not find user {{target}}.",
-    "not_creator": "Error: You are not the creator of any group.",
-    "notify_recipient": "🔔 [INVITE] {{sender}} invited you to join their savings group \"{{groupName}}\".\n\nReply with: JOIN GROUP {{groupId}}",
-    "success": "✅ Invite sent to {{target}}."
-  },
-  "group_status": {
-    "no_groups": "You are not part of any groups.",
-    "header": "*Your Groups:*\n\n",
-    "entry": "*{{name}}*\nTarget: {{amount}} XLM ({{frequency}})\nRole: {{role}}\nMembers: {{count}}\n\n"
-  },
-  "payout": {
-    "usage": "Usage: PAYOUT <ORDER|STATUS|WAIT|PROCEED|SKIP>",
-    "no_group": "Error: You are not part of any group.",
-    "not_creator": "Error: You are not the creator of any group.",
-    "order_usage": "Usage: PAYOUT ORDER <@user1> <@user2> ... (list every member exactly once)",
-    "order_success": "✅ Payout order updated.",
-    "order_failed": "❌ Failed to update payout order: {{message}}",
-    "order_invalid_member": "Error: Could not find user {{target}}.",
-    "status": "*Payout Rotation for {{name}}*\nCycle: {{cycle}}\nNext up: {{next}}\n\n{{order}}",
-    "wait_success": "⏳ Deadline extended by 24 hours.",
-    "wait_failed": "❌ Could not extend deadline: {{message}}",
-    "proceed_success": "✅ Payout processed with the partial pool.",
-    "proceed_failed": "❌ Could not process payout: {{message}}",
-    "skip_usage": "Usage: PAYOUT SKIP <@username or phone>",
-    "skip_success": "✅ {{target}} has been moved to the back of the rotation.",
-    "skip_failed": "❌ Could not skip member: {{message}}",
-    "skip_no_user": "Error: Could not find user {{target}}."
-  },
-  "contribute": {
-    "usage": "Usage: CONTRIBUTE <amount>",
-    "no_group": "Error: You are not part of any group.",
-    "amount_mismatch": "❌ Contribution must be exactly {{required}} XLM as required by this group.",
-    "initiating": "[CONTRIBUTE] Initiating contribution of {{amount}} XLM to \"{{groupName}}\"...",
-    "success": "✅ Successfully contributed {{amount}} XLM to \"{{groupName}}\"!",
-    "failed": "❌ Contribution failed: {{message}}"
-  },
-  "validation": {
-    "invalid_format": "❌ Invalid amount format. Please enter a positive number (e.g., 10 or 10.50).",
-    "zero_amount": "❌ Amount must be greater than zero.",
-    "precision_exceeded": "❌ Amount cannot have more than 7 decimal places.",
-    "exceeds_max": "❌ Amount exceeds the maximum allowed (1,000,000 XLM)."
-  },
-  "withdraw": {
-    "usage": "Usage: WITHDRAW <amount>",
-    "no_group": "Error: You are not part of any group.",
-    "success": "✅ Successfully withdrew {{amount}} XLM from \"{{groupName}}\" pool! (MOCKED)"
-  },
-  "help": {
-    "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Payout Rotation_\nPAYOUT ORDER <@user1> <@user2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@user>\n\n_Support_\nHELP\nSUPPORT"
-  },
-  "unknown": {
-    "command": "I didn't understand that command. Send HELP to see available commands."
-  },
-  "error": {
-    "generic": "An error occurred: {{message}}"
-  },
-  "rate_limit": {
-    "exceeded": "⚠️ You're sending too many requests. Please wait {{remainingSeconds}} seconds."
-  },
-  "wallet": {
-    "usdc_trustline_low_reserve": "You need at least 2 XLM in your wallet to enable USDC."
-  }
+    "balance": {
+        "no_wallet": "[BALANCE] Error: Wallet not configured.",
+        "success": "💰 Your Balances:\n{{balances}}",
+        "asset_not_found": "You don't have a trustline for {{asset}}."
+    },
+    "history": {
+        "fetching": "[HISTORY] Fetching transaction history for {{phone}}...",
+        "header": "📜 Transaction History (Last 10):\n\n",
+        "item_sent": "{{index}}. ✅ Sent {{amount}} {{asset}} to {{counterparty}}\n   {{date}} • tx: {{hash}}",
+        "item_received": "{{index}}. 📥 Received {{amount}} {{asset}} from {{counterparty}}\n   {{date}} • tx: {{hash}}",
+        "item_other": "{{index}}. 🔄 {{type}} ({{amount}} {{asset}})\n   {{date}} • tx: {{hash}}",
+        "more": "\nReply HISTORY MORE to see older transactions",
+        "no_more": "\nNo more transactions to show.",
+        "not_funded": "No transaction history — your wallet hasn't been funded yet",
+        "unavailable": "Transaction history is temporarily unavailable. Please try again later.",
+        "no_wallet": "Error: Your wallet is not configured."
+    },
+    "profile": {
+        "card": "*Kolo Profile*\nPhone: {{phone}}\nUsername: {{username}}\nWallet: {{wallet}}\nJoined: {{joined}}"
+    },
+    "send": {
+        "usage": "Usage: SEND <amount> <@username or phone>",
+        "no_wallet": "Error: Your wallet is not configured.",
+        "no_recipient": "Error: Could not find wallet for user {{target}}.",
+        "initiating": "[SEND] Initiating transfer of {{amount}} XLM to {{target}}...",
+        "success": "✅ Successfully sent {{amount}} XLM to {{target}}!",
+        "failed": "❌ [SEND] Failed: {{message}}"
+    },
+    "request": {
+        "usage": "Usage: REQUEST <amount> <@username or phone>",
+        "no_user": "Error: Could not find user {{target}}.",
+        "notify_recipient": "🔔 [REQUEST] {{sender}} is requesting {{amount}} XLM from you.\n\nReply with:\nACCEPT {{requestId}} to approve (funds are held securely in escrow)\nDECLINE {{requestId}} to reject",
+        "confirmation": "[REQUEST] Request for {{amount}} XLM sent to {{target}}."
+    },
+    "create_group": {
+        "usage": "Usage: CREATE GROUP <name> <amount> <frequency>",
+        "success": "✅ Group \"{{name}}\" created!\nGroup ID: {{id}}",
+        "failed": "❌ Failed to create group: {{message}}"
+    },
+    "join_group": {
+        "usage": "Usage: JOIN GROUP <groupId>",
+        "success": "✅ Successfully joined group!",
+        "failed": "❌ Failed to join group: {{message}}"
+    },
+    "invite_member": {
+        "usage": "Usage: INVITE MEMBER <@username or phone>",
+        "no_user": "Error: Could not find user {{target}}.",
+        "not_creator": "Error: You are not the creator of any group.",
+        "notify_recipient": "🔔 [INVITE] {{sender}} invited you to join their savings group \"{{groupName}}\".\n\nReply with: JOIN GROUP {{groupId}}",
+        "success": "✅ Invite sent to {{target}}."
+    },
+    "group_status": {
+        "no_groups": "You are not part of any groups.",
+        "header": "*Your Groups:*\n\n",
+        "entry": "*{{name}}*\nTarget: {{amount}} XLM ({{frequency}})\nRole: {{role}}\nMembers: {{count}}\n\n"
+    },
+    "payout": {
+        "usage": "Usage: PAYOUT <ORDER|STATUS|WAIT|PROCEED|SKIP>",
+        "no_group": "Error: You are not part of any group.",
+        "not_creator": "Error: You are not the creator of any group.",
+        "order_usage": "Usage: PAYOUT ORDER <@user1> <@user2> ... (list every member exactly once)",
+        "order_success": "✅ Payout order updated.",
+        "order_failed": "❌ Failed to update payout order: {{message}}",
+        "order_invalid_member": "Error: Could not find user {{target}}.",
+        "status": "*Payout Rotation for {{name}}*\nCycle: {{cycle}}\nNext up: {{next}}\n\n{{order}}",
+        "wait_success": "⏳ Deadline extended by 24 hours.",
+        "wait_failed": "❌ Could not extend deadline: {{message}}",
+        "proceed_success": "✅ Payout processed with the partial pool.",
+        "proceed_failed": "❌ Could not process payout: {{message}}",
+        "skip_usage": "Usage: PAYOUT SKIP <@username or phone>",
+        "skip_success": "✅ {{target}} has been moved to the back of the rotation.",
+        "skip_failed": "❌ Could not skip member: {{message}}",
+        "skip_no_user": "Error: Could not find user {{target}}."
+    },
+    "contribute": {
+        "usage": "Usage: CONTRIBUTE <amount>",
+        "no_group": "Error: You are not part of any group.",
+        "amount_mismatch": "❌ Contribution must be exactly {{required}} XLM as required by this group.",
+        "initiating": "[CONTRIBUTE] Initiating contribution of {{amount}} XLM to \"{{groupName}}\"...",
+        "success": "✅ Successfully contributed {{amount}} XLM to \"{{groupName}}\"!",
+        "failed": "❌ Contribution failed: {{message}}"
+    },
+    "validation": {
+        "invalid_format": "❌ Invalid amount format. Please enter a positive number (e.g., 10 or 10.50).",
+        "zero_amount": "❌ Amount must be greater than zero.",
+        "precision_exceeded": "❌ Amount cannot have more than 7 decimal places.",
+        "exceeds_max": "❌ Amount exceeds the maximum allowed (1,000,000 XLM)."
+    },
+    "withdraw": {
+        "usage": "Usage: WITHDRAW <amount>",
+        "no_group": "Error: You are not part of any group.",
+        "success": "✅ Successfully withdrew {{amount}} XLM from \"{{groupName}}\" pool! (MOCKED)"
+    },
+    "help": {
+        "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Payout Rotation_\nPAYOUT ORDER <@user1> <@user2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@user>\n\n_Support_\nHELP\nSUPPORT"
+    },
+    "unknown": {
+        "command": "I didn't understand that command. Send HELP to see available commands."
+    },
+    "error": {
+        "generic": "An error occurred: {{message}}"
+    },
+    "rate_limit": {
+        "exceeded": "⚠️ You're sending too many requests. Please wait {{remainingSeconds}} seconds."
+    },
+    "wallet": {
+        "usdc_trustline_low_reserve": "You need at least 2 XLM in your wallet to enable USDC."
+    },
+    "payment_request": {
+        "accept_usage": "Usage: ACCEPT <requestId>",
+        "decline_usage": "Usage: DECLINE <requestId>",
+        "accepted": "✅ Escrow hold placed! {{amount}} {{asset}} is now locked for this request.\n\nIf everything looks right, the requester will receive it in about {{minutes}} minutes.\n\nMade a mistake? You have {{reclaimHours}} hour to reclaim your funds from the escrow.\nTx: https://stellar.expert/explorer/testnet/tx/{{hash}}",
+        "declined": "🙎 {{respondent}} declined your request for {{amount}} {{asset}}.",
+        "decline_confirmed": "Request declined. The requester has been notified.",
+        "completed_requester": "💸 Your payment request of {{amount}} {{asset}} was completed and the funds are in your account.\nTx: https://stellar.expert/explorer/testnet/tx/{{hash}}",
+        "completed_responder": "✅ The confirmation window closed and {{amount}} {{asset}} was released to the requester. Thanks for using Kolo!",
+        "expired": "⏰ Your payment request for {{amount}} {{asset}} to {{respondent}} has expired without a response.",
+        "error_not_found": "Could not find that payment request. Check the ID and try again.",
+        "error_not_pending": "That request is no longer pending.",
+        "error_expired": "That request has expired.",
+        "error_not_responder": "This request wasn't addressed to you.",
+        "error_insufficient_balance": "You don't have enough XLM to cover this request.",
+        "error_too_many_pending": "You already have 5 pending payment requests. Wait for some to complete or expire first.",
+        "error_self_request": "You can't send a payment request to yourself."
+    }
 }

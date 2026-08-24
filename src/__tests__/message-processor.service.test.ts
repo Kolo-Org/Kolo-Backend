@@ -51,6 +51,21 @@ jest.mock('../utils/encryption.util', () => ({
     decrypt: (...args: any[]) => mockDecrypt(...args),
 }));
 
+const mockCreatePaymentRequest = jest.fn();
+const mockAcceptPaymentRequest = jest.fn();
+const mockDeclinePaymentRequest = jest.fn();
+const mockPaymentRequestService = {
+    createRequest: mockCreatePaymentRequest,
+    acceptRequest: mockAcceptPaymentRequest,
+    declineRequest: mockDeclinePaymentRequest,
+};
+
+jest.mock('../queue/payment-request.queue', () => ({
+    scheduleRequestCompletion: jest.fn().mockResolvedValue(undefined),
+    scheduleRequestExpiry: jest.fn().mockResolvedValue(undefined),
+}));
+const { scheduleRequestExpiry, scheduleRequestCompletion } = require('../queue/payment-request.queue');
+
 const mockWhatsAppService = { sendMessage: mockSendMessage };
 const mockGetTransactionHistory = jest.fn().mockResolvedValue({
     transactions: [
@@ -88,6 +103,7 @@ describe('MessageProcessor', () => {
             mockUserService as any,
             mockGroupService as any,
             mockPayoutService as any,
+            mockPaymentRequestService as any,
         );
     });
 
@@ -589,6 +605,68 @@ describe('MessageProcessor', () => {
             mockGetOrCreateUser.mockResolvedValueOnce(noWalletUser).mockResolvedValueOnce(noWalletUser);
             await processor.processCommand('12345', 'BALANCE');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('balance.no_wallet'));
+        });
+    });
+
+    describe('payment requests (issue #65)', () => {
+        it('REQUEST creates a tracked request and sends the recipient the requestId', async () => {
+            mockCreatePaymentRequest.mockResolvedValue({ id: 'REQ-1', expiresAt: new Date(Date.now() + 86400000) });
+
+            await processor.processCommand('12345', 'REQUEST 50 @jane');
+
+            expect(mockCreatePaymentRequest).toHaveBeenCalledWith('u1', 'u2', '50');
+            expect(scheduleRequestExpiry).toHaveBeenCalledWith('REQ-1', expect.any(Date));
+            const recipientMsg = mockSendMessage.mock.calls[0][1];
+            expect(recipientMsg).toContain('request.notify_recipient');
+            expect(recipientMsg).toContain('"requestId":"REQ-1"');
+        });
+
+        it('REQUEST rejects when the sender already has 5 pending requests', async () => {
+            const { PaymentRequestError } = require('../services/payment-request.service');
+            mockCreatePaymentRequest.mockRejectedValue(new PaymentRequestError('too_many_pending'));
+
+            await processor.processCommand('12345', 'REQUEST 50 @jane');
+
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('payment_request.error_too_many_pending'));
+        });
+
+        it('ACCEPT places the escrow hold and schedules completion', async () => {
+            mockAcceptPaymentRequest.mockResolvedValue({
+                request: { id: 'REQ-1', amount: '50', assetCode: 'XLM' },
+                balanceId: 'CB-1',
+                hash: 'HOLD_HASH',
+            });
+
+            await processor.processCommand('67890', 'ACCEPT REQ-1');
+
+            expect(mockAcceptPaymentRequest).toHaveBeenCalledWith('REQ-1', '67890');
+            expect(scheduleRequestCompletion).toHaveBeenCalledWith('REQ-1');
+            expect(mockSendMessage).toHaveBeenCalledWith('67890', expect.stringContaining('payment_request.accepted'));
+        });
+
+        it('ACCEPT refuses a request addressed to someone else', async () => {
+            const { PaymentRequestError } = require('../services/payment-request.service');
+            mockAcceptPaymentRequest.mockRejectedValue(new PaymentRequestError('not_responder'));
+
+            await processor.processCommand('67890', 'ACCEPT REQ-1');
+
+            expect(mockSendMessage).toHaveBeenCalledWith('67890', expect.stringContaining('payment_request.error_not_responder'));
+        });
+
+        it('DECLINE marks the request declined and notifies the requester', async () => {
+            mockDeclinePaymentRequest.mockResolvedValue({
+                amount: '50',
+                assetCode: 'XLM',
+                requester: { phoneNumber: '1111', language: 'en', username: null },
+                responder: { username: 'jane', phoneNumber: '2222' },
+            });
+
+            await processor.processCommand('67890', 'DECLINE REQ-1');
+
+            expect(mockDeclinePaymentRequest).toHaveBeenCalledWith('REQ-1', '67890');
+            // Requester gets the declined notice, responder gets the confirmation
+            expect(mockSendMessage).toHaveBeenCalledWith('1111', expect.stringContaining('payment_request.declined'));
+            expect(mockSendMessage).toHaveBeenCalledWith('67890', expect.stringContaining('payment_request.decline_confirmed'));
         });
     });
 });
