@@ -7,6 +7,13 @@ export class ObservabilityService {
     }
 
     /**
+     * Logs warnings.
+     */
+    public logWarning(message: string, context?: Record<string, any>): void {
+        console.warn(`[WARN] ${message}`, context ? JSON.stringify(context) : '');
+    }
+
+    /**
      * Logs non-critical errors.
      */
     public logError(message: string, error?: any, context?: Record<string, any>): void {

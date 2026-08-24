@@ -1,4 +1,4 @@
-import { encrypt, decrypt } from '../utils/encryption.util';
+import { encrypt, decrypt, encryptBuffer } from '../utils/encryption.util';
 import { config } from '../config/env';
 
 describe('encryption.util', () => {
@@ -27,7 +27,8 @@ describe('encryption.util', () => {
         expect(result.authTag).toBeDefined();
 
         const decrypted = decrypt(result.encryptedText, result.iv, result.authTag, result.keyVersion);
-        expect(decrypted).toBe(text);
+        expect(decrypted).toBeInstanceOf(Buffer);
+        expect(decrypted.toString('utf8')).toBe(text);
     });
 
     it('decrypts legacy v1 data when keyVersion is not provided', () => {
@@ -39,7 +40,8 @@ describe('encryption.util', () => {
 
         // Decrypt without specifying keyVersion (legacy fallback)
         const decrypted = decrypt(result.encryptedText, result.iv, result.authTag);
-        expect(decrypted).toBe(text);
+        expect(decrypted).toBeInstanceOf(Buffer);
+        expect(decrypted.toString('utf8')).toBe(text);
     });
 
     it('decrypts successfully with explicit v1 key', () => {
@@ -48,7 +50,8 @@ describe('encryption.util', () => {
         const result = encrypt(text);
 
         const decrypted = decrypt(result.encryptedText, result.iv, result.authTag, 1);
-        expect(decrypted).toBe(text);
+        expect(decrypted).toBeInstanceOf(Buffer);
+        expect(decrypted.toString('utf8')).toBe(text);
     });
 
     it('fails to decrypt if the wrong version is supplied', () => {
@@ -64,5 +67,32 @@ describe('encryption.util', () => {
         expect(() => {
             decrypt('dummy', 'dummy', 'dummy', 99);
         }).toThrow('Encryption key for version 99 is not set');
+    });
+
+    it('encryptBuffer encrypts a Buffer and decrypt returns Buffer', () => {
+        const data = Buffer.from('test secret data for buffer encryption');
+        const result = encryptBuffer(data);
+
+        expect(result.keyVersion).toBe(2);
+        expect(result.encryptedText).toBeDefined();
+        expect(result.iv).toBeDefined();
+        expect(result.authTag).toBeDefined();
+
+        const decrypted = decrypt(result.encryptedText, result.iv, result.authTag, result.keyVersion);
+        expect(decrypted).toBeInstanceOf(Buffer);
+        expect(decrypted).toEqual(data);
+    });
+
+    it('decrypt returns a Buffer that can be zeroed', () => {
+        const text = 'secret to be zeroed';
+        const result = encrypt(text);
+        const decrypted = decrypt(result.encryptedText, result.iv, result.authTag, result.keyVersion);
+
+        expect(decrypted).toBeInstanceOf(Buffer);
+        expect(decrypted.length).toBeGreaterThan(0);
+
+        // Zero the buffer
+        decrypted.fill(0);
+        expect(decrypted.every(b => b === 0)).toBe(true);
     });
 });
