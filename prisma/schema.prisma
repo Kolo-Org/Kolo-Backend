@@ -100,3 +100,15 @@ model PayoutOrderLog {
 
   @@index([groupId])
 }
+
+model SecretAccessLog {
+  id           String   @id @default(uuid())
+  userId       String
+  operation    String   // "SEND" | "CONTRIBUTE" | "TRUSTLINE" | "KEY_ROTATION"
+  success      Boolean
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}

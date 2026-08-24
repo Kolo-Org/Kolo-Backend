@@ -1,4 +1,5 @@
 import express, { type ErrorRequestHandler } from 'express';
+import { spawnSync } from 'child_process';
 import { StrKey } from '@stellar/stellar-sdk';
 import botRoutes from './routes/bot.routes';
 import adminRoutes from './routes/admin.routes';
@@ -7,6 +8,7 @@ import { startWorker } from './workers/message.worker';
 import { startSorobanDeploymentWorker } from './workers/soroban-deployment.worker';
 import { startKeyRotationWorker } from './workers/key-rotation.worker';
 import { observabilityService } from './services/observability.service';
+import { zeroAllInFlightSecrets } from './utils/secret-registry';
 
 if (!config.ENCRYPTION_KEY) {
     throw new Error('ENCRYPTION_KEY environment variable is required');
@@ -20,6 +22,21 @@ if (config.USDC_ISSUER_PUBLIC_KEY && !StrKey.isValidEd25519PublicKey(config.USDC
     throw new Error('USDC_ISSUER_PUBLIC_KEY is set but is not a valid Stellar public key');
 }
 
+// Check core dump configuration at startup
+function checkCoreDumpsDisabled(): void {
+    try {
+        const result = spawnSync('sh', ['-c', 'ulimit -c'], { encoding: 'utf8' });
+        const limit = result.stdout?.trim();
+        if (limit && limit !== '0' && limit !== 'unlimited') {
+            observabilityService.logWarning('Core dumps may be enabled', { ulimit_c: limit });
+        }
+    } catch (e) {
+        observabilityService.logWarning('Could not verify core dump setting', { error: e });
+    }
+}
+
+checkCoreDumpsDisabled();
+
 // Process-level safety net. These are the last line of defence for the
 // "unhandled promise rejection" failure mode: any rejection or throw that
 // escapes a request handler, worker, or timer is logged here instead of
@@ -29,6 +46,8 @@ process.on('unhandledRejection', (reason) => {
 });
 
 process.on('uncaughtException', (err) => {
+    // Zero all in-flight secret buffers before crashing
+    zeroAllInFlightSecrets();
     observabilityService.alertCriticalFailure('Uncaught exception', err).finally(() => {
         // After an uncaught exception the process is in an undefined state; exit so
         // the orchestrator can restart it cleanly rather than serve corrupt state.

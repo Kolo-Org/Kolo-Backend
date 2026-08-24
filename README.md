@@ -318,11 +318,12 @@ npm start
 
 When deploying wallet-generation code in production:
 
-* Disable core dumps with `ulimit -c 0`
+* **Disable core dumps** with `ulimit -c 0` (verified at application startup)
 * Disable crash dump collection in the container runtime or host OS
 * Prefer an isolated key-management service for final wallet custody
 * Never log `secret` values or derived wallet payloads
 * Review memory-dump settings after OS, container, and base-image upgrades
+* Application automatically zeros all in-flight secret buffers on uncaught exceptions
 
 ### Compliance
 

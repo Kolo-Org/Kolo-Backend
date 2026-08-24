@@ -5,6 +5,8 @@ import { decrypt } from '../utils/encryption.util';
 import { config } from '../config/env';
 import { t } from './locale.service';
 import { redisClient } from '../lib/redis';
+import { registerSecret, unregisterSecret } from '../utils/secret-registry';
+import { logSecretAccess } from '../utils/audit-logger';
 
 const stellarService = new StellarService();
 const whatsappService = new WhatsAppService();
@@ -28,8 +30,19 @@ export class UserService {
 
             if (config.USDC_ISSUER_PUBLIC_KEY) {
                 try {
-                    const secret = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
-                    await stellarService.createTrustline(secret, 'USDC', config.USDC_ISSUER_PUBLIC_KEY);
+                    // Use the newly generated wallet, not user.stellarWallet (user is null here)
+                    let secretBuffer: Buffer | null = null;
+                    try {
+                        secretBuffer = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
+                        registerSecret(secretBuffer);
+                        await stellarService.createTrustline(secretBuffer, 'USDC', config.USDC_ISSUER_PUBLIC_KEY);
+                        // No user.id yet since user is not created - skip audit log for this initial trustline
+                    } finally {
+                        if (secretBuffer) {
+                            unregisterSecret(secretBuffer);
+                            secretBuffer.fill(0);
+                        }
+                    }
                 } catch (err) {
                     if (err instanceof InsufficientReserveError) {
                         await whatsappService.sendMessage(phoneNumber, t('wallet.usdc_trustline_low_reserve', 'en'));
