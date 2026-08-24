@@ -322,36 +322,41 @@ export class SorobanService {
             throw err;
         }
 
-        try {
-            const deployerKeypair = StellarSdk.Keypair.fromSecret(config.DEPLOYER_SECRET_KEY);
+try {
+            const deployerSeed = StellarSdk.StrKey.decodeEd25519SecretSeed(config.DEPLOYER_SECRET_KEY);
+            const deployerKeypair = StellarSdk.Keypair.fromRawEd25519Seed(deployerSeed);
             const admin = params.adminPublicKey || deployerKeypair.publicKey();
             const usdcTokenAddress = config.USDC_TOKEN_ADDRESS || 'CCW67TSBXSHOMEVDBLAEXGPSDMT2OVL4TJBB25KVEA2MOWFK76OO5SS7';
 
-            // 1. Load WASM
-            const wasmBuffer = this.loadContractWasm(params.wasmPath);
+            try {
+                // 1. Load WASM
+                const wasmBuffer = this.loadContractWasm(params.wasmPath);
 
-            // 2. Upload WASM
-            const { wasmHash } = await this.uploadWasm(deployerKeypair, wasmBuffer);
+                // 2. Upload WASM
+                const { wasmHash } = await this.uploadWasm(deployerKeypair, wasmBuffer);
 
-            // 3. Create Contract Instance
-            const { contractId } = await this.createCustomContract(deployerKeypair, wasmHash);
+                // 3. Create Contract Instance
+                const { contractId } = await this.createCustomContract(deployerKeypair, wasmHash);
 
-            // 4. Invoke initialize()
-            await this.initializeContract(deployerKeypair, contractId, {
-                admin,
-                usdcTokenAddress,
-                groupName: params.name,
-                contributionAmount: params.contributionAmount,
-            });
+                // 4. Invoke initialize()
+                await this.initializeContract(deployerKeypair, contractId, {
+                    admin,
+                    usdcTokenAddress,
+                    groupName: params.name,
+                    contributionAmount: params.contributionAmount,
+                });
 
-            const latency = Date.now() - startTime;
-            observabilityService.logInfo('Contract deployment completed successfully', {
-                groupId: params.groupId,
-                contractId,
-                latency,
-            });
+                const latency = Date.now() - startTime;
+                observabilityService.logInfo('Contract deployment completed successfully', {
+                    groupId: params.groupId,
+                    contractId,
+                    latency,
+                });
 
-            return { contractId, latency };
+                return { contractId, latency };
+            } finally {
+                deployerSeed.fill(0);
+            }
         } catch (error: any) {
             const latency = Date.now() - startTime;
             observabilityService.logError('Contract deployment failed', error, {

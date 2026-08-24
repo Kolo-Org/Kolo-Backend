@@ -48,7 +48,32 @@ export function encrypt(text: string) {
     }
 }
 
-export function decrypt(encryptedText: string, ivHex: string, authTagHex: string, keyVersion?: number): string {
+export function encryptBuffer(data: Buffer) {
+    const keyVersion = config.CURRENT_ENCRYPTION_KEY_VERSION;
+    const key = getKeyBuffer(keyVersion);
+    let cipher: crypto.CipherGCM | undefined;
+
+    try {
+        const iv = crypto.randomBytes(12);
+        cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+
+        let encrypted = cipher.update(data, undefined, 'hex');
+        encrypted += cipher.final('hex');
+
+        const authTag = cipher.getAuthTag().toString('hex');
+
+        return {
+            encryptedText: encrypted,
+            iv: iv.toString('hex'),
+            authTag: authTag,
+            keyVersion: keyVersion
+        };
+    } finally {
+        key.fill(0);
+    }
+}
+
+export function decrypt(encryptedText: string, ivHex: string, authTagHex: string, keyVersion?: number): Buffer {
     const key = getKeyBuffer(keyVersion);
     let decipher: crypto.DecipherGCM | undefined;
 
@@ -59,8 +84,10 @@ export function decrypt(encryptedText: string, ivHex: string, authTagHex: string
         decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
         decipher.setAuthTag(authTag);
 
-        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
+        const decrypted = Buffer.concat([
+            decipher.update(Buffer.from(encryptedText, 'hex')),
+            decipher.final()
+        ]);
 
         return decrypted;
     } finally {
@@ -108,7 +135,7 @@ export function encryptField(plaintext: string): string {
 
 export function decryptField(blob: string): string {
     const parsed = JSON.parse(blob) as EncryptedFieldBlob;
-    return decrypt(parsed.c, parsed.iv, parsed.tag, parsed.v);
+    return decrypt(parsed.c, parsed.iv, parsed.tag, parsed.v).toString('utf8');
 }
 
 export function isEncryptedFieldBlob(value: unknown): value is string {

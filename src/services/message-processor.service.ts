@@ -6,6 +6,8 @@ import { PayoutService } from './payout.service';
 import { decrypt } from '../utils/encryption.util';
 import { t, isSupportedLanguage, loadLocale } from './locale.service';
 import { redisClient } from '../lib/redis';
+import { registerSecret, unregisterSecret, zeroAllInFlightSecrets } from '../utils/secret-registry';
+import { logSecretAccess } from '../utils/audit-logger';
 
 export class MessageProcessor {
     private whatsappService: WhatsAppService;
@@ -307,10 +309,13 @@ export class MessageProcessor {
         }
 
         const senderWallet = JSON.parse(user.stellarWallet);
-        const senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag, senderWallet.keyVersion || user.encryptionKeyVersion);
-        const recipientPublicKey = JSON.parse(recipient.stellarWallet).publicKey;
+        let senderSecret: Buffer | null = null;
 
         try {
+            senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag, senderWallet.keyVersion || user.encryptionKeyVersion);
+            registerSecret(senderSecret);
+            const recipientPublicKey = JSON.parse(recipient.stellarWallet).publicKey;
+
             await this.whatsappService.sendMessage(
                 from,
                 t('send.initiating', lang, { amount, target }),
@@ -320,12 +325,19 @@ export class MessageProcessor {
                 from,
                 t('send.success', lang, { amount, target }),
             );
+            await logSecretAccess(user.id, 'SEND', true);
         } catch (e: any) {
             console.error(e);
             await this.whatsappService.sendMessage(
                 from,
                 t('send.failed', lang, { message: e.message || 'Transaction error' }),
             );
+            await logSecretAccess(user.id, 'SEND', false, e.message);
+        } finally {
+            if (senderSecret) {
+                unregisterSecret(senderSecret);
+                senderSecret.fill(0);
+            }
         }
     }
 
@@ -667,10 +679,13 @@ export class MessageProcessor {
         }
 
         const senderWallet = JSON.parse(user.stellarWallet);
-        const senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag, senderWallet.keyVersion || user.encryptionKeyVersion);
-        const recipientPublicKey = group.stellarContractId;
+        let senderSecret: Buffer | null = null;
 
         try {
+            senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag, senderWallet.keyVersion || user.encryptionKeyVersion);
+            registerSecret(senderSecret);
+            const recipientPublicKey = group.stellarContractId;
+
             await this.whatsappService.sendMessage(
                 from,
                 t('contribute.initiating', lang, { amount: amountStr, groupName: group.name }),
@@ -687,11 +702,18 @@ export class MessageProcessor {
                 from,
                 t('contribute.success', lang, { amount: amountStr, groupName: group.name }),
             );
+            await logSecretAccess(user.id, 'CONTRIBUTE', true);
         } catch (e: any) {
             await this.whatsappService.sendMessage(
                 from,
                 t('contribute.failed', lang, { message: e.message }),
             );
+            await logSecretAccess(user.id, 'CONTRIBUTE', false, e.message);
+        } finally {
+            if (senderSecret) {
+                unregisterSecret(senderSecret);
+                senderSecret.fill(0);
+            }
         }
     }
 

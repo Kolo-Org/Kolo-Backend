@@ -27,6 +27,7 @@ const mockRedisKeys = redisClient.keys as jest.Mock;
 const mockRedisScan = redisClient.scan as jest.Mock;
 mockRedisScan.mockResolvedValue(['0', []]);
 
+// Mock StellarSdk
 jest.mock('@stellar/stellar-sdk', () => {
     const originalModule = jest.requireActual('@stellar/stellar-sdk');
 
@@ -40,7 +41,8 @@ jest.mock('@stellar/stellar-sdk', () => {
 
     const mKeypair = {
         publicKey: jest.fn().mockReturnValue('G_MOCK_PUBLIC_KEY'),
-        secret: jest.fn().mockReturnValue('S_MOCK_SECRET_KEY')
+        secret: jest.fn().mockReturnValue('S_MOCK_SECRET_KEY'),
+        rawSecretKey: jest.fn().mockReturnValue(Buffer.from('0'.repeat(32)))
     };
 
     return {
@@ -49,14 +51,21 @@ jest.mock('@stellar/stellar-sdk', () => {
         TransactionBuilder: mTransactionBuilder,
         Keypair: {
             fromSecret: jest.fn().mockReturnValue(mKeypair),
+            fromRawEd25519Seed: jest.fn().mockReturnValue(mKeypair),
             random: jest.fn().mockReturnValue(mKeypair)
         },
         Operation: {
             payment: jest.fn().mockReturnValue({}),
             changeTrust: jest.fn().mockReturnValue({}),
         },
+        Networks: originalModule.Networks,
+        StrKey: originalModule.StrKey,
+        xdr: originalModule.xdr,
+        hash: originalModule.hash,
     };
 });
+
+const mRawSeed = Buffer.from('0'.repeat(32)); // 32-byte raw seed
 
 jest.mock('axios', () => ({
     get: jest.fn().mockResolvedValue({ status: 200, data: { successful: true } })
@@ -84,16 +93,18 @@ describe('StellarService', () => {
     });
 
     describe('generateWallet', () => {
-        it('should return a generated keypair with encrypted secret', () => {
+        it('should return a generated keypair with encrypted raw seed', () => {
             const wallet = stellarService.generateWallet();
 
             expect(wallet.publicKey).toBe('G_MOCK_PUBLIC_KEY');
             expect(wallet.encryptedSecret).toBeDefined();
             expect(wallet.iv).toBeDefined();
             expect(wallet.authTag).toBeDefined();
+            expect(wallet.keyVersion).toBeDefined();
 
             const decrypted = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
-            expect(decrypted).toBe('S_MOCK_SECRET_KEY');
+            expect(decrypted).toBeInstanceOf(Buffer);
+            expect(decrypted.length).toBe(32); // 32-byte raw Ed25519 seed
         });
     });
 
@@ -174,10 +185,12 @@ describe('StellarService', () => {
 
     describe('createTrustline', () => {
         const issuer = 'GA5SUFR3QFFS6UJWJA3YMMLWQ56J3WGUOJ672JH4L6FBW6DYOHAXNHIC';
+        const mockSeed = Buffer.from('0'.repeat(32));
 
         it('should submit a changeTrust transaction when no trustline exists', async () => {
-            await stellarService.createTrustline('S_MOCK', 'USDC', issuer);
+            await stellarService.createTrustline(mockSeed, 'USDC', issuer);
 
+            expect(StellarSdk.Keypair.fromRawEd25519Seed).toHaveBeenCalledWith(mockSeed);
             expect(StellarSdk.Operation.changeTrust).toHaveBeenCalledWith({
                 asset: expect.any(StellarSdk.Asset),
             });
@@ -192,7 +205,7 @@ describe('StellarService', () => {
                 ],
             });
 
-            await stellarService.createTrustline('S_MOCK', 'USDC', issuer);
+            await stellarService.createTrustline(mockSeed, 'USDC', issuer);
 
             expect(StellarSdk.Operation.changeTrust).not.toHaveBeenCalled();
             expect(mServer.submitTransaction).not.toHaveBeenCalled();
@@ -203,7 +216,7 @@ describe('StellarService', () => {
                 response: { data: { extras: { result_codes: { operations: ['op_low_reserve'] } } } },
             });
 
-            await expect(stellarService.createTrustline('S_MOCK', 'USDC', issuer)).rejects.toThrow(
+            await expect(stellarService.createTrustline(mockSeed, 'USDC', issuer)).rejects.toThrow(
                 InsufficientReserveError,
             );
         });
@@ -211,7 +224,7 @@ describe('StellarService', () => {
         it('should throw InsufficientReserveError when the account does not exist yet', async () => {
             mServer.loadAccount.mockRejectedValueOnce({ response: { status: 404 } });
 
-            await expect(stellarService.createTrustline('S_MOCK', 'USDC', issuer)).rejects.toThrow(
+            await expect(stellarService.createTrustline(mockSeed, 'USDC', issuer)).rejects.toThrow(
                 InsufficientReserveError,
             );
         });
@@ -219,14 +232,16 @@ describe('StellarService', () => {
         it('should rethrow unrelated submission errors', async () => {
             mServer.submitTransaction.mockRejectedValueOnce(new Error('boom'));
 
-            await expect(stellarService.createTrustline('S_MOCK', 'USDC', issuer)).rejects.toThrow('boom');
+            await expect(stellarService.createTrustline(mockSeed, 'USDC', issuer)).rejects.toThrow('boom');
         });
     });
 
     describe('sendPayment', () => {
+        const mockSeed = Buffer.from('0'.repeat(32));
+
         it('should submit transaction and return result', async () => {
             const validPublicKey = 'GBBM6BKZPEHWPI3VK3VNKEJEXTMIGNNCE2ZEXSVEEKSJNDYTK2E4QUDE';
-            const result = await stellarService.sendPayment('S_MOCK', validPublicKey, '10.0');
+            const result = await stellarService.sendPayment(mockSeed, validPublicKey, '10.0');
             expect(result.successful).toBe(true);
             expect(result.hash).toBe('mock_tx_hash');
         });
@@ -236,7 +251,7 @@ describe('StellarService', () => {
             stellarService = new StellarService();
 
             const validPublicKey = 'GBBM6BKZPEHWPI3VK3VNKEJEXTMIGNNCE2ZEXSVEEKSJNDYTK2E4QUDE';
-            await stellarService.sendPayment('S_MOCK', validPublicKey, '10.0');
+            await stellarService.sendPayment(mockSeed, validPublicKey, '10.0');
 
             expect(StellarSdk.TransactionBuilder).toHaveBeenCalledWith(
                 expect.anything(),
@@ -250,7 +265,7 @@ describe('StellarService', () => {
             mockRedisScan.mockResolvedValueOnce(['0', ['tx_history:G_MOCK:page:1']]);
             mockRedisScan.mockResolvedValueOnce(['0', ['tx_history:GBBM6BKZPEHWPI3VK3VNKEJEXTMIGNNCE2ZEXSVEEKSJNDYTK2E4QUDE:page:1']]);
             const validPublicKey = 'GBBM6BKZPEHWPI3VK3VNKEJEXTMIGNNCE2ZEXSVEEKSJNDYTK2E4QUDE';
-            await stellarService.sendPayment('S_MOCK', validPublicKey, '10.0');
+            await stellarService.sendPayment(mockSeed, validPublicKey, '10.0');
             expect(mockRedisDel).toHaveBeenCalledWith('tx_history:G_MOCK:page:1');
         });
     });

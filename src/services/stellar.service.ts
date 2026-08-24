@@ -1,12 +1,13 @@
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { config } from '../config/env';
-import { encrypt } from '../utils/encryption.util';
+import { encrypt, encryptBuffer } from '../utils/encryption.util';
 import { redisClient } from '../lib/redis';
 export interface GeneratedWallet {
     publicKey: string;
     encryptedSecret: string;
     iv: string;
     authTag: string;
+    keyVersion: number;
 }
 
 export interface AssetBalance {
@@ -44,21 +45,24 @@ export class StellarService {
 
     /**
      * Generates a new Stellar wallet and encrypts its secret key for secure storage.
+     * Stores the raw 32-byte Ed25519 seed (not the StrKey-encoded secret) to enable
+     * zero-copy secret handling via Keypair.fromRawEd25519Seed().
      */
     public generateWallet(): GeneratedWallet {
         const pair = StellarSdk.Keypair.random();
-        const secretBuffer = Buffer.from(pair.secret(), 'utf8');
+        const rawSeed = pair.rawSecretKey(); // 32-byte Buffer
 
         try {
-            const { encryptedText, iv, authTag } = encrypt(secretBuffer.toString('utf8'));
+            const { encryptedText, iv, authTag, keyVersion } = encryptBuffer(rawSeed);
             return {
                 publicKey: pair.publicKey(),
                 encryptedSecret: encryptedText,
                 iv,
                 authTag,
+                keyVersion,
             };
         } finally {
-            secretBuffer.fill(0);
+            rawSeed.fill(0);
         }
     }
 
@@ -100,9 +104,10 @@ export class StellarService {
 
     /**
      * Sends a native XLM payment from one account to another and invalidates cached transaction history.
+     * Accepts a raw 32-byte Ed25519 seed Buffer (not a StrKey string) for secret lifetime minimization.
      */
-    public async sendPayment(sourceSecret: string, destinationPublicKey: string, amount: string): Promise<any> {
-        const sourceKeypair = StellarSdk.Keypair.fromSecret(sourceSecret);
+    public async sendPayment(sourceSecret: Buffer, destinationPublicKey: string, amount: string): Promise<any> {
+        const sourceKeypair = StellarSdk.Keypair.fromRawEd25519Seed(sourceSecret);
         const sourceAccount = await this.server.loadAccount(sourceKeypair.publicKey());
 
         const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
@@ -256,9 +261,10 @@ export class StellarService {
      * Establishes a trustline for a user account to hold a custom issued asset.
      * No-op if the trustline already exists.
      * Throws InsufficientReserveError when the account lacks the reserve needed for trustlines.
+     * Accepts a raw 32-byte Ed25519 seed Buffer for secret lifetime minimization.
      */
-    public async createTrustline(userSecret: string, assetCode: string, issuerPublicKey: string): Promise<void> {
-        const sourceKeypair = StellarSdk.Keypair.fromSecret(userSecret);
+    public async createTrustline(userSecret: Buffer, assetCode: string, issuerPublicKey: string): Promise<void> {
+        const sourceKeypair = StellarSdk.Keypair.fromRawEd25519Seed(userSecret);
 
         let sourceAccount;
         try {
