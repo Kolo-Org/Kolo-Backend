@@ -1,5 +1,7 @@
-import { encrypt, decrypt } from '../utils/encryption.util';
+import { encrypt, decrypt, encryptField, decryptField, hmacPhone, isEncryptedFieldBlob } from '../utils/encryption.util';
 import { config } from '../config/env';
+
+const TEST_HMAC_KEY = '3333333333333333333333333333333333333333333333333333333333333333';
 
 describe('encryption.util', () => {
     let originalConfig: typeof config;
@@ -11,6 +13,7 @@ describe('encryption.util', () => {
             2: '2222222222222222222222222222222222222222222222222222222222222222',
         };
         config.CURRENT_ENCRYPTION_KEY_VERSION = 2;
+        config.HMAC_KEY = TEST_HMAC_KEY;
     });
 
     afterEach(() => {
@@ -64,5 +67,57 @@ describe('encryption.util', () => {
         expect(() => {
             decrypt('dummy', 'dummy', 'dummy', 99);
         }).toThrow('Encryption key for version 99 is not set');
+    });
+
+    describe('field-level helpers (phone number encryption at rest)', () => {
+        it('roundtrips a phone number through encryptField/decryptField', () => {
+            const phone = '+2348012345678';
+            const blob = encryptField(phone);
+
+            expect(isEncryptedFieldBlob(blob)).toBe(true);
+            expect(blob).not.toContain(phone);
+            expect(decryptField(blob)).toBe(phone);
+        });
+
+        it('produces different ciphertext for the same input (per-field IV)', () => {
+            const blob1 = encryptField('+2348012345678');
+            const blob2 = encryptField('+2348012345678');
+
+            expect(blob1).not.toBe(blob2);
+            expect(decryptField(blob1)).toBe(decryptField(blob2));
+        });
+
+        it('rejects values that are not encrypted blobs', () => {
+            expect(isEncryptedFieldBlob('+2348012345678')).toBe(false);
+            expect(isEncryptedFieldBlob('not json {')).toBe(false);
+            expect(isEncryptedFieldBlob('{"c":1}')).toBe(false);
+        });
+
+        it('computes a deterministic HMAC for lookups', () => {
+            const hash1 = hmacPhone('+2348012345678');
+            const hash2 = hmacPhone('+2348012345678');
+
+            expect(hash1).toBe(hash2);
+            expect(hash1).not.toContain('+2348012345678');
+        });
+
+        it('produces different hashes for different numbers', () => {
+            expect(hmacPhone('+2348012345678')).not.toBe(hmacPhone('+2348098765432'));
+        });
+
+        it('uses the HMAC key, not the encryption key', () => {
+            config.HMAC_KEY = '3333333333333333333333333333333333333333333333333333333333333333';
+            const withHmacKey = hmacPhone('+2348012345678');
+
+            config.HMAC_KEY = '4444444444444444444444444444444444444444444444444444444444444444';
+            const withOtherKey = hmacPhone('+2348012345678');
+
+            expect(withHmacKey).not.toBe(withOtherKey);
+        });
+
+        it('fails when HMAC_KEY is not set', () => {
+            config.HMAC_KEY = '';
+            expect(() => hmacPhone('+2348012345678')).toThrow('HMAC_KEY is not set');
+        });
     });
 });
