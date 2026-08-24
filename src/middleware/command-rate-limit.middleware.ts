@@ -211,7 +211,7 @@ export const commandRateLimitMiddleware = async (
             let lang = 'en';
             try {
                 await initI18n();
-                const user = await prisma.user.findUnique({ where: { phoneNumber } }) as any;
+                const user = await prisma.user.findFirst({ where: { phoneNumber } }) as any;
                 if (user && user.language) {
                     lang = user.language;
                 }
