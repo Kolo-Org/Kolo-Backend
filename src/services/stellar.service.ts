@@ -297,6 +297,77 @@ export class StellarService {
         }
     }
 
+    /**
+     * Places an escrow hold on the source account's funds by creating a
+     * claimable balance with two claimants:
+     * - the requester, who can claim unconditionally (this completes the transfer)
+     * - the respondent, who can only claim after `reclaimSeconds` — their escape
+     *   hatch if they accepted by accident
+     *
+     * Returns the transaction hash and the claimable balance ID.
+     */
+    public async createClaimableBalanceWithHold(
+        sourceSecret: string,
+        requesterPublicKey: string,
+        amount: string,
+        reclaimSeconds: number = 3600,
+    ): Promise<{ hash: string; balanceId: string }> {
+        const sourceKeypair = StellarSdk.Keypair.fromSecret(sourceSecret);
+        const sourceAccount = await this.server.loadAccount(sourceKeypair.publicKey());
+
+        const now = Math.floor(Date.now() / 1000);
+        const reclaimPredicate = StellarSdk.Claimant.predicateBeforeRelativeTime(String(reclaimSeconds));
+
+        const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
+            fee: (await this.server.fetchBaseFee()).toString(),
+            networkPassphrase: this.networkPassphrase(),
+        })
+        .addOperation(StellarSdk.Operation.createClaimableBalance({
+            asset: StellarSdk.Asset.native(),
+            amount: amount,
+            claimants: [
+                new StellarSdk.Claimant(requesterPublicKey, StellarSdk.Claimant.predicateUnconditional()),
+                new StellarSdk.Claimant(sourceKeypair.publicKey(), reclaimPredicate),
+            ],
+        }))
+        .setTimeout(30)
+        .build();
+
+        transaction.sign(sourceKeypair);
+        const result = await this.server.submitTransaction(transaction);
+
+        const response: any = result;
+        const balanceId = response?.created_claimable_balance_id ?? '';
+        if (!balanceId) {
+            throw new Error('Claimable balance was created but no balance ID was returned.');
+        }
+
+        return { hash: result.hash, balanceId };
+    }
+
+    /**
+     * Claims a claimable balance on behalf of the given account. Used by the
+     * payment request flow when the confirmation window elapses and the
+     * requester collects the held funds.
+     */
+    public async claimClaimableBalance(sourceSecret: string, balanceId: string): Promise<{ hash: string }> {
+        const sourceKeypair = StellarSdk.Keypair.fromSecret(sourceSecret);
+        const sourceAccount = await this.server.loadAccount(sourceKeypair.publicKey());
+
+        const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
+            fee: (await this.server.fetchBaseFee()).toString(),
+            networkPassphrase: this.networkPassphrase(),
+        })
+        .addOperation(StellarSdk.Operation.claimClaimableBalance({ balanceId }))
+        .setTimeout(30)
+        .build();
+
+        transaction.sign(sourceKeypair);
+        const result = await this.server.submitTransaction(transaction);
+
+        return { hash: result.hash };
+    }
+
     private networkPassphrase(): string {
         return config.STELLAR_NETWORK === 'TESTNET'
             ? StellarSdk.Networks.TESTNET
