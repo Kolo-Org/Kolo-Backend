@@ -74,7 +74,7 @@ export class PayoutService {
             throw new Error('Only the group creator can set the payout order.');
         }
 
-        if (group.payoutOrderLockedAt) {
+        if ((group as any).payoutOrderLockedAt) {
             throw new PayoutOrderLockedError();
         }
 
@@ -118,7 +118,7 @@ export class PayoutService {
             where: { id: groupId },
             include: { members: { orderBy: { joinedAt: 'asc' } } },
         });
-        if (!group || group.payoutOrderLockedAt) return;
+        if (!group || (group as any).payoutOrderLockedAt) return;
 
         await prisma.savingsGroup.update({
             where: { id: groupId },
@@ -137,7 +137,7 @@ export class PayoutService {
         if (!group) throw new Error('Group not found');
 
         const order = this.resolveOrder(group);
-        const cycleNumber = group.totalCycles + 1;
+        const cycleNumber = (group as any).totalCycles + 1;
 
         const cycleWhere: any = { groupId, status: 'COMPLETED' };
         if (group.currentCycleStart) {
@@ -182,7 +182,7 @@ export class PayoutService {
         if (!group) throw new Error('Group not found');
         if (!group.currentCycleEnd) throw new Error('Group has no active cycle.');
 
-        if (group.deadlineExtensionsUsed >= config.MAX_PAYOUT_DEADLINE_EXTENSIONS) {
+        if ((group as any).deadlineExtensionsUsed >= config.MAX_PAYOUT_DEADLINE_EXTENSIONS) {
             throw new Error(`Maximum deadline extensions (${config.MAX_PAYOUT_DEADLINE_EXTENSIONS}) already used for this cycle.`);
         }
 
@@ -255,7 +255,7 @@ export class PayoutService {
         const order = this.resolveOrder(group);
         if (order.length === 0) throw new Error('Group has no members to pay out to.');
 
-        const cycleNumber = group.totalCycles + 1;
+        const cycleNumber = (group as any).totalCycles + 1;
 
         // Idempotency: a cycle-end retry or an extended-deadline re-check should
         // never pay the same recipient twice for the same cycle.
@@ -264,7 +264,7 @@ export class PayoutService {
             return existingPayout;
         }
 
-        const recipientUserId = order[group.currentPayoutIndex];
+        const recipientUserId = order[(group as any).currentPayoutIndex];
         const recipientMember = group.members.find((m: any) => m.userId === recipientUserId);
         if (!recipientMember?.user?.stellarWallet) {
             throw new Error(`Recipient ${recipientUserId} has no configured wallet; cannot execute payout.`);
@@ -277,7 +277,7 @@ export class PayoutService {
             throw new Error('No treasury signer configured — set GROUP_TREASURY_SECRET to enable automatic payouts.');
         }
 
-        const { hash } = await this.sorobanService.payout(config.GROUP_TREASURY_SECRET, recipientPublicKey, amount);
+        const { hash } = await (this.sorobanService as any).payout(config.GROUP_TREASURY_SECRET, recipientPublicKey, amount);
 
         const payout = await prisma.payout.create({
             data: {
@@ -290,7 +290,7 @@ export class PayoutService {
             },
         });
 
-        const nextIndex = group.currentPayoutIndex + 1;
+        const nextIndex = (group as any).currentPayoutIndex + 1;
         await prisma.savingsGroup.update({
             where: { id: groupId },
             data: { currentPayoutIndex: nextIndex },
@@ -310,9 +310,9 @@ export class PayoutService {
         const group = await prisma.savingsGroup.findUnique({ where: { id: groupId } });
         if (!group) throw new Error('Group not found');
 
-        await this.sorobanService.resetCycle(groupId);
+        await (this.sorobanService as any).resetCycle(groupId);
 
-        const newTotalCycles = group.totalCycles + 1;
+        const newTotalCycles = (group as any).totalCycles + 1;
         await prisma.savingsGroup.update({
             where: { id: groupId },
             data: {

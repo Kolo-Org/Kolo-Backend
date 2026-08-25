@@ -15,7 +15,7 @@ import { isSupportedLanguage } from './locale.service';
 
 export class UserService {
     public async getOrCreateUser(phoneNumber: string, locale?: string): Promise<any> {
-        let user = await prisma.user.findUnique({
+        let user = await prisma.user.findFirst({
             where: { phoneNumber }
         });
 
@@ -77,13 +77,15 @@ export class UserService {
         if (target.startsWith('@')) {
             return await prisma.user.findUnique({ where: { username: target.substring(1) } });
         } else {
-            return await prisma.user.findUnique({ where: { phoneNumber: target } });
+            return await prisma.user.findFirst({ where: { phoneNumber: target } });
         }
     }
 
     public async updateUserLanguage(phoneNumber: string, language: string): Promise<any> {
+        const user = await prisma.user.findFirst({ where: { phoneNumber } });
+        if (!user) return null;
         return await prisma.user.update({
-            where: { phoneNumber },
+            where: { id: user.id },
             data: { language }
         });
     }
