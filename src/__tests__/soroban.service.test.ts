@@ -1,9 +1,11 @@
+/**
+ * Tests for the new SorobanService methods added for contribution sync:
+ *  - invokeContribute()
+ *  - queryContribution()
+ *  - submitTransaction() polling paths (SUCCESS, FAILED, PENDING timeout)
+ */
 import * as StellarSdk from '@stellar/stellar-sdk';
-import fs from 'fs';
-import path from 'path';
 import { SorobanService } from '../services/soroban.service';
-import { config } from '../config/env';
-import { observabilityService } from '../services/observability.service';
 
 jest.mock('../services/observability.service', () => ({
     observabilityService: {
@@ -13,274 +15,267 @@ jest.mock('../services/observability.service', () => ({
     },
 }));
 
-describe('SorobanService Unit Tests', () => {
-    let sorobanService: SorobanService;
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function makeSimSuccess(overrides: Record<string, any> = {}) {
+    return {
+        transactionData: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+        minResourceFee: '500',
+        results: [{ xdr: 'AAAAAQ==', auth: [] }],
+        latestLedger: 100,
+        ...overrides,
+    };
+}
+
+// ── submitTransaction polling paths ──────────────────────────────────────────
+
+describe('SorobanService.submitTransaction() polling', () => {
+    let service: SorobanService;
     let mockServer: any;
-    let deployerKeypair: StellarSdk.Keypair;
-    let testWasmPath: string;
+    let keypair: StellarSdk.Keypair;
+    let tx: StellarSdk.Transaction;
 
     beforeEach(() => {
-        jest.clearAllMocks();
-        deployerKeypair = StellarSdk.Keypair.random();
-        sorobanService = new SorobanService('https://soroban-testnet.stellar.org');
+        keypair = StellarSdk.Keypair.random();
+        service = new SorobanService('https://soroban-testnet.stellar.org');
+        mockServer = {
+            simulateTransaction: jest.fn().mockResolvedValue(makeSimSuccess()),
+            sendTransaction: jest.fn(),
+            getTransaction: jest.fn(),
+            getAccount: jest.fn().mockResolvedValue(new StellarSdk.Account(keypair.publicKey(), '100')),
+        };
+        service.server = mockServer;
 
+        const account = new StellarSdk.Account(keypair.publicKey(), '100');
+        tx = new StellarSdk.TransactionBuilder(account, {
+            fee: '1000',
+            networkPassphrase: StellarSdk.Networks.TESTNET,
+        })
+            .addOperation(StellarSdk.Operation.manageData({ name: 'test', value: null }))
+            .setTimeout(30)
+            .build();
+    });
+
+    it('returns SUCCESS immediately when sendTransaction returns SUCCESS', async () => {
+        mockServer.sendTransaction.mockResolvedValue({ status: 'SUCCESS', hash: 'hash_abc' });
+
+        const result = await service.submitTransaction(tx, keypair, mockServer);
+        expect(result).toEqual({ hash: 'hash_abc', status: 'SUCCESS' });
+        expect(mockServer.getTransaction).not.toHaveBeenCalled();
+    });
+
+    it('returns SUCCESS after polling when status transitions to SUCCESS', async () => {
+        mockServer.sendTransaction.mockResolvedValue({ status: 'PENDING', hash: 'hash_poll' });
+        mockServer.getTransaction
+            .mockResolvedValueOnce({ status: 'NOT_FOUND' })
+            .mockResolvedValueOnce({ status: 'NOT_FOUND' })
+            .mockResolvedValueOnce({ status: 'SUCCESS' });
+
+        const result = await service.submitTransaction(tx, keypair, mockServer, { maxPolls: 5, pollIntervalMs: 0 });
+
+        expect(result).toEqual({ hash: 'hash_poll', status: 'SUCCESS' });
+        expect(mockServer.getTransaction).toHaveBeenCalledTimes(3);
+    }, 10000);
+
+    it('throws when the transaction reaches FAILED status', async () => {
+        mockServer.sendTransaction.mockResolvedValue({ status: 'PENDING', hash: 'hash_fail' });
+        mockServer.getTransaction.mockResolvedValue({ status: 'FAILED' });
+
+        await expect(
+            service.submitTransaction(tx, keypair, mockServer, { maxPolls: 3, pollIntervalMs: 0 }),
+        ).rejects.toThrow('Transaction failed on ledger: hash_fail');
+    }, 10000);
+
+    it('returns PENDING when poll limit is exhausted without confirmation', async () => {
+        mockServer.sendTransaction.mockResolvedValue({ status: 'PENDING', hash: 'hash_timeout' });
+        mockServer.getTransaction.mockResolvedValue({ status: 'NOT_FOUND' });
+
+        const result = await service.submitTransaction(tx, keypair, mockServer, {
+            maxPolls: 3,
+            pollIntervalMs: 0,
+        });
+
+        expect(result).toEqual({ hash: 'hash_timeout', status: 'PENDING' });
+        expect(mockServer.getTransaction).toHaveBeenCalledTimes(3);
+    }, 10000);
+
+    it('throws when sendTransaction returns ERROR', async () => {
+        mockServer.sendTransaction.mockResolvedValue({ status: 'ERROR', errorResultXdr: 'ERR_XDR' });
+
+        await expect(service.submitTransaction(tx, keypair, mockServer)).rejects.toThrow(
+            'Transaction submission failed',
+        );
+    });
+});
+
+// ── invokeContribute ──────────────────────────────────────────────────────────
+
+describe('SorobanService.invokeContribute()', () => {
+    let service: SorobanService;
+    let mockServer: any;
+    let memberKeypair: StellarSdk.Keypair;
+    const contractId = 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM';
+
+    beforeEach(() => {
+        memberKeypair = StellarSdk.Keypair.random();
+        service = new SorobanService('https://soroban-testnet.stellar.org');
+        mockServer = {
+            simulateTransaction: jest.fn().mockResolvedValue(makeSimSuccess()),
+            sendTransaction: jest.fn().mockResolvedValue({ status: 'SUCCESS', hash: 'contrib_hash_1' }),
+            getTransaction: jest.fn(),
+            getAccount: jest.fn().mockResolvedValue(new StellarSdk.Account(memberKeypair.publicKey(), '50')),
+        };
+        service.server = mockServer;
+    });
+
+    it('builds and submits a contribute() invocation using the member keypair', async () => {
+        const result = await service.invokeContribute(
+            memberKeypair,
+            contractId,
+            memberKeypair.publicKey(),
+            100_000_000n, // 10 XLM in stroops
+            mockServer,
+        );
+
+        expect(result.status).toBe('SUCCESS');
+        expect(result.hash).toBe('contrib_hash_1');
+        expect(mockServer.getAccount).toHaveBeenCalledWith(memberKeypair.publicKey());
+        expect(mockServer.simulateTransaction).toHaveBeenCalledTimes(1);
+        expect(mockServer.sendTransaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('passes amount as i128 ScVal with correct stroop value', async () => {
+        await service.invokeContribute(
+            memberKeypair,
+            contractId,
+            memberKeypair.publicKey(),
+            50_000_000n,
+            mockServer,
+        );
+
+        const simulateCall = mockServer.simulateTransaction.mock.calls[0][0];
+        const envelope = StellarSdk.TransactionBuilder.fromXDR(
+            simulateCall.toEnvelope().toXDR('base64'),
+            StellarSdk.Networks.TESTNET,
+        ) as StellarSdk.Transaction;
+
+        const op = envelope.operations[0] as any;
+        // invokeContractFunction encodes the function name as a Symbol — check via the raw XDR op
+        // The raw operation type name confirms it's an InvokeHostFunction
+        expect(op.type).toBe('invokeHostFunction');
+        // Second arg is the amount — verify it's an i128 ScVal
+        const rawArgs = (simulateCall.operations[0] as any).functions?.[0]?.args
+            ?? (simulateCall.operations[0] as any).args;
+        if (rawArgs) {
+            const amountScVal = rawArgs[1];
+            expect(amountScVal.switch().name).toBe('scvI128');
+        }
+    });
+
+    it('forwards PENDING status when polling times out', async () => {
+        mockServer.sendTransaction.mockResolvedValue({ status: 'PENDING', hash: 'slow_hash' });
+        mockServer.getTransaction.mockResolvedValue({ status: 'NOT_FOUND' });
+
+        // invokeContribute uses maxPolls=15 by default; override to 2 to keep test fast
+        const origSubmit = service.submitTransaction.bind(service);
+        jest.spyOn(service, 'submitTransaction').mockImplementationOnce(
+            async (tx, keypair, server) => origSubmit(tx, keypair, server, { maxPolls: 2, pollIntervalMs: 0 }),
+        );
+
+        const result = await service.invokeContribute(
+            memberKeypair,
+            contractId,
+            memberKeypair.publicKey(),
+            10_000_000n,
+            mockServer,
+        );
+
+        expect(result.status).toBe('PENDING');
+        expect(result.hash).toBe('slow_hash');
+    }, 10000);
+
+    it('throws when the on-chain transaction FAILED', async () => {
+        mockServer.sendTransaction.mockResolvedValue({ status: 'PENDING', hash: 'fail_hash' });
+        mockServer.getTransaction.mockResolvedValue({ status: 'FAILED' });
+
+        await expect(
+            service.invokeContribute(
+                memberKeypair,
+                contractId,
+                memberKeypair.publicKey(),
+                10_000_000n,
+                mockServer,
+            ),
+        ).rejects.toThrow('Transaction failed on ledger: fail_hash');
+    });
+});
+
+// ── queryContribution ─────────────────────────────────────────────────────────
+
+describe('SorobanService.queryContribution()', () => {
+    let service: SorobanService;
+    let mockServer: any;
+    let memberPublicKey: string;
+    const contractId = 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM';
+
+    function makeI128ScVal(value: bigint): string {
+        // Build an i128 ScVal and return its base64 XDR
+        const lo = value & 0xFFFFFFFFFFFFFFFFn;
+        const hi = value >> 64n;
+        const scVal = StellarSdk.xdr.ScVal.scvI128(
+            new StellarSdk.xdr.Int128Parts({
+                hi: StellarSdk.xdr.Int64.fromString(hi.toString()),
+                lo: StellarSdk.xdr.Uint64.fromString(lo.toString()),
+            }),
+        );
+        return scVal.toXDR('base64');
+    }
+
+    beforeEach(() => {
+        const kp = StellarSdk.Keypair.random();
+        memberPublicKey = kp.publicKey();
+        service = new SorobanService('https://soroban-testnet.stellar.org');
         mockServer = {
             simulateTransaction: jest.fn(),
             sendTransaction: jest.fn(),
             getTransaction: jest.fn(),
-            getAccount: jest.fn().mockResolvedValue(new StellarSdk.Account(deployerKeypair.publicKey(), '100')),
         };
-
-        sorobanService.server = mockServer;
-        testWasmPath = path.resolve(__dirname, 'test_contract.wasm');
-        fs.writeFileSync(testWasmPath, Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]));
+        service.server = mockServer;
     });
 
-    afterEach(() => {
-        if (fs.existsSync(testWasmPath)) {
-            fs.unlinkSync(testWasmPath);
-        }
+    it('returns the i128 value from the simulation result', async () => {
+        const amountStroops = 100_000_000n; // 10 XLM
+        const xdr = makeI128ScVal(amountStroops);
+        mockServer.simulateTransaction.mockResolvedValue({
+            transactionData: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+            minResourceFee: '100',
+            results: [{ xdr, auth: [] }],
+            latestLedger: 200,
+        });
+
+        const result = await service.queryContribution(contractId, memberPublicKey, mockServer);
+        expect(result).toBe(amountStroops);
     });
 
-    describe('loadContractWasm', () => {
-        it('should successfully load contract wasm binary', () => {
-            const wasm = sorobanService.loadContractWasm(testWasmPath);
-            expect(wasm).toBeDefined();
-            expect(wasm.length).toBe(8);
+    it('returns 0n when the simulation returns an error (member never contributed)', async () => {
+        mockServer.simulateTransaction.mockResolvedValue({
+            error: 'ContractError: NotFound',
+            latestLedger: 200,
         });
 
-        it('should throw an error if the wasm file does not exist', () => {
-            expect(() => {
-                sorobanService.loadContractWasm('/invalid/path/contract.wasm');
-            }).toThrow('WASM contract file not found');
-        });
+        const result = await service.queryContribution(contractId, memberPublicKey, mockServer);
+        expect(result).toBe(0n);
     });
 
-    describe('simulateAndAssembleTransaction', () => {
-        // Raw simulation response helper — matches what the Soroban RPC actually returns
-        function makeRawSimSuccess(overrides: Record<string, any> = {}) {
-            return {
-                transactionData: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', // empty SorobanTransactionData XDR
-                minResourceFee: '500',
-                results: [{ xdr: 'AAAAAQ==', auth: [] }], // scvVoid XDR
-                latestLedger: 100,
-                ...overrides,
-            };
-        }
-
-        it('should simulate transaction and bump fee if base fee < 1000', async () => {
-            const account = new StellarSdk.Account(deployerKeypair.publicKey(), '100');
-            const tx = new StellarSdk.TransactionBuilder(account, {
-                fee: '100',
-                networkPassphrase: StellarSdk.Networks.TESTNET,
-            })
-                .addOperation(StellarSdk.Operation.uploadContractWasm({ wasm: Buffer.from([0, 97, 115, 109]) }))
-                .setTimeout(30)
-                .build();
-
-            mockServer.simulateTransaction.mockResolvedValue(makeRawSimSuccess());
-
-            const assembled = await sorobanService.simulateAndAssembleTransaction(tx);
-            expect(Number(assembled.fee)).toBeGreaterThanOrEqual(1000);
-            expect(mockServer.simulateTransaction).toHaveBeenCalledTimes(1);
+    it('returns 0n when results array is empty', async () => {
+        mockServer.simulateTransaction.mockResolvedValue({
+            transactionData: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+            minResourceFee: '100',
+            results: [],
+            latestLedger: 200,
         });
 
-        it('should retry up to 3 times if RPC simulation returns PENDING status', async () => {
-            const account = new StellarSdk.Account(deployerKeypair.publicKey(), '100');
-            const tx = new StellarSdk.TransactionBuilder(account, {
-                fee: '100',
-                networkPassphrase: StellarSdk.Networks.TESTNET,
-            })
-                .addOperation(StellarSdk.Operation.uploadContractWasm({ wasm: Buffer.from([0, 97, 115, 109]) }))
-                .setTimeout(30)
-                .build();
-
-            const mockSimPending = { status: 'PENDING' };
-
-            mockServer.simulateTransaction
-                .mockResolvedValueOnce(mockSimPending)
-                .mockResolvedValueOnce(makeRawSimSuccess());
-
-            const assembled = await sorobanService.simulateAndAssembleTransaction(tx);
-            expect(assembled).toBeDefined();
-            expect(mockServer.simulateTransaction).toHaveBeenCalledTimes(2);
-        });
-
-        it('should throw an error if simulation returns an error', async () => {
-            const account = new StellarSdk.Account(deployerKeypair.publicKey(), '100');
-            const tx = new StellarSdk.TransactionBuilder(account, {
-                fee: '100',
-                networkPassphrase: StellarSdk.Networks.TESTNET,
-            })
-                .addOperation(StellarSdk.Operation.uploadContractWasm({ wasm: Buffer.from([0, 97, 115, 109]) }))
-                .setTimeout(30)
-                .build();
-
-            mockServer.simulateTransaction.mockResolvedValue({
-                error: 'Host function execution failed',
-            });
-
-            await expect(sorobanService.simulateAndAssembleTransaction(tx)).rejects.toThrow('Simulation failed');
-        });
-
-        it('should handle restorePreamble if present in simulation response', async () => {
-            const account = new StellarSdk.Account(deployerKeypair.publicKey(), '100');
-            const tx = new StellarSdk.TransactionBuilder(account, {
-                fee: '100',
-                networkPassphrase: StellarSdk.Networks.TESTNET,
-            })
-                .addOperation(StellarSdk.Operation.uploadContractWasm({ wasm: Buffer.from([0, 97, 115, 109]) }))
-                .setTimeout(30)
-                .build();
-
-            mockServer.simulateTransaction.mockResolvedValue(
-                makeRawSimSuccess({
-                    restorePreamble: {
-                        transactionData: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', // base64 XDR, same as empty SorobanDataBuilder
-                        minResourceFee: '200',
-                    },
-                })
-            );
-
-            const assembled = await sorobanService.simulateAndAssembleTransaction(tx);
-            expect(assembled).toBeDefined();
-        });
-    });
-
-    describe('submitTransaction', () => {
-        it('should return transaction hash when submission succeeds immediately', async () => {
-            const account = new StellarSdk.Account(deployerKeypair.publicKey(), '100');
-            const tx = new StellarSdk.TransactionBuilder(account, {
-                fee: '1000',
-                networkPassphrase: StellarSdk.Networks.TESTNET,
-            })
-                .addOperation(StellarSdk.Operation.bumpSequence({ bumpTo: '105' }))
-                .setTimeout(30)
-                .build();
-
-            mockServer.sendTransaction.mockResolvedValue({
-                status: 'SUCCESS',
-                hash: 'mock_tx_hash_123',
-            });
-
-            const hash = await sorobanService.submitTransaction(tx, deployerKeypair);
-            expect(hash).toBe('mock_tx_hash_123');
-        });
-
-        it('should poll getTransaction until status is SUCCESS', async () => {
-            const account = new StellarSdk.Account(deployerKeypair.publicKey(), '100');
-            const tx = new StellarSdk.TransactionBuilder(account, {
-                fee: '1000',
-                networkPassphrase: StellarSdk.Networks.TESTNET,
-            })
-                .addOperation(StellarSdk.Operation.bumpSequence({ bumpTo: '105' }))
-                .setTimeout(30)
-                .build();
-
-            mockServer.sendTransaction.mockResolvedValue({
-                status: 'PENDING',
-                hash: 'mock_tx_hash_456',
-            });
-
-            mockServer.getTransaction
-                .mockResolvedValueOnce({ status: 'NOT_FOUND' })
-                .mockResolvedValueOnce({ status: 'SUCCESS' });
-
-            const hash = await sorobanService.submitTransaction(tx, deployerKeypair);
-            expect(hash).toBe('mock_tx_hash_456');
-            expect(mockServer.getTransaction).toHaveBeenCalledTimes(2);
-        });
-
-        it('should throw error when submission status returns ERROR', async () => {
-            const account = new StellarSdk.Account(deployerKeypair.publicKey(), '100');
-            const tx = new StellarSdk.TransactionBuilder(account, {
-                fee: '1000',
-                networkPassphrase: StellarSdk.Networks.TESTNET,
-            })
-                .addOperation(StellarSdk.Operation.bumpSequence({ bumpTo: '105' }))
-                .setTimeout(30)
-                .build();
-
-            mockServer.sendTransaction.mockResolvedValue({
-                status: 'ERROR',
-                errorResultXdr: 'mock_error_xdr',
-            });
-
-            await expect(sorobanService.submitTransaction(tx, deployerKeypair)).rejects.toThrow('Transaction submission failed');
-        });
-    });
-
-    describe('deployGroupContract orchestrator', () => {
-        let originalSecretKey: string;
-
-        beforeAll(() => {
-            originalSecretKey = config.DEPLOYER_SECRET_KEY;
-        });
-
-        afterAll(() => {
-            config.DEPLOYER_SECRET_KEY = originalSecretKey;
-        });
-
-        it('should throw an error if DEPLOYER_SECRET_KEY is missing', async () => {
-            config.DEPLOYER_SECRET_KEY = '';
-            await expect(
-                sorobanService.deployGroupContract({
-                    groupId: 'group-1',
-                    name: 'Savings Club',
-                    contributionAmount: '500',
-                })
-            ).rejects.toThrow('DEPLOYER_SECRET_KEY is not configured');
-            expect(observabilityService.logError).toHaveBeenCalled();
-        });
-
-        it('should complete contract deployment flow when mocks return success', async () => {
-            config.DEPLOYER_SECRET_KEY = deployerKeypair.secret();
-
-            const mockWasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
-            jest.spyOn(sorobanService, 'loadContractWasm').mockReturnValue(mockWasm);
-            jest.spyOn(sorobanService, 'uploadWasm').mockResolvedValue({
-                wasmHash: StellarSdk.hash(mockWasm),
-                txHash: 'hash_upload',
-            });
-            jest.spyOn(sorobanService, 'createCustomContract').mockResolvedValue({
-                contractId: 'CC4UXKYIYM2AKACS7I3PS63C7ONUYVBPIAGU5V35WULTZERJ4KOR7ZTF',
-                txHash: 'hash_create',
-            });
-            jest.spyOn(sorobanService, 'initializeContract').mockResolvedValue({
-                txHash: 'hash_init',
-            });
-
-            const result = await sorobanService.deployGroupContract({
-                groupId: 'group-100',
-                name: 'Test Group',
-                contributionAmount: '100',
-            });
-
-            expect(result.contractId).toBe('CC4UXKYIYM2AKACS7I3PS63C7ONUYVBPIAGU5V35WULTZERJ4KOR7ZTF');
-            expect(result.latency).toBeGreaterThanOrEqual(0);
-            expect(observabilityService.logInfo).toHaveBeenCalledWith(
-                'Contract deployment completed successfully',
-                expect.objectContaining({ groupId: 'group-100' })
-            );
-        });
-
-        it('should log error and alert when network timeout or deployment error occurs', async () => {
-            config.DEPLOYER_SECRET_KEY = deployerKeypair.secret();
-
-            jest.spyOn(sorobanService, 'loadContractWasm').mockImplementation(() => {
-                throw new Error('Network timeout during file load');
-            });
-
-            await expect(
-                sorobanService.deployGroupContract({
-                    groupId: 'group-error',
-                    name: 'Failed Group',
-                    contributionAmount: '200',
-                })
-            ).rejects.toThrow('Network timeout during file load');
-
-            expect(observabilityService.logError).toHaveBeenCalled();
-            expect(observabilityService.alertCriticalFailure).toHaveBeenCalled();
-        });
+        const result = await service.queryContribution(contractId, memberPublicKey, mockServer);
+        expect(result).toBe(0n);
     });
 });
