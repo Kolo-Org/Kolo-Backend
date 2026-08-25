@@ -112,7 +112,7 @@ export class GroupService {
         });
     }
 
-    public async addContribution(userId: string, groupId: string, amount: string | Prisma.Decimal, txHash: string) {
+    public async addContribution(userId: string, groupId: string, amount: string | Prisma.Decimal, txHash: string, status: 'COMPLETED' | 'PENDING' | 'FAILED' = 'COMPLETED') {
         GroupService.validateAmount(amount);
         return await prisma.contribution.create({
             data: {
@@ -120,7 +120,7 @@ export class GroupService {
                 groupId,
                 amount,
                 transactionHash: txHash,
-                status: 'COMPLETED'
+                status,
             }
         });
     }
