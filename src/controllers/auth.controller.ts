@@ -18,7 +18,7 @@ export const getChallenge = (req: Request, res: Response) => {
     }
 };
 
-export const getToken = (req: Request, res: Response) => {
+export const getToken = async (req: Request, res: Response) => {
     try {
         const { transaction } = req.body;
 
@@ -27,10 +27,10 @@ export const getToken = (req: Request, res: Response) => {
             return;
         }
 
-        const { token, account } = authService.verifyChallengeAndGenerateToken(transaction);
+        const { token, account } = await authService.verifyChallengeAndGenerateToken(transaction);
         res.json({ token, account });
     } catch (error: any) {
         console.error('Error verifying challenge:', error);
-        res.status(401).json({ error: 'Invalid challenge transaction' });
+        res.status(401).json({ error: error.message || 'Invalid challenge transaction' });
     }
 };

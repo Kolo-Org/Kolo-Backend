@@ -6,6 +6,13 @@ if (isNaN(currentVersionParsed)) {
     throw new Error('CURRENT_ENCRYPTION_KEY_VERSION must be a valid number');
 }
 
+if (!process.env.SEP10_SERVER_SECRET) {
+    throw new Error('SEP10_SERVER_SECRET environment variable is required');
+}
+if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+}
+
 export const config = {
     PORT: process.env.PORT || 3000,
     WHATSAPP_TOKEN: process.env.WHATSAPP_TOKEN || '',
@@ -30,8 +37,9 @@ export const config = {
     USDC_TOKEN_ADDRESS: process.env.USDC_TOKEN_ADDRESS || 'CCW67TSBXSHOMEVDBLAEXGPSDMT2OVL4TJBB25KVEA2MOWFK76OO5SS7',
     GROUP_TREASURY_SECRET: process.env.GROUP_TREASURY_SECRET || '',
     MAX_PAYOUT_DEADLINE_EXTENSIONS: parseInt(process.env.MAX_PAYOUT_DEADLINE_EXTENSIONS || '2', 10),
-    SEP10_SERVER_SECRET: process.env.SEP10_SERVER_SECRET || '',
+    SEP10_SERVER_SECRET: process.env.SEP10_SERVER_SECRET,
     SEP10_HOME_DOMAIN: process.env.SEP10_HOME_DOMAIN || 'localhost',
-    JWT_SECRET: process.env.JWT_SECRET || 'kolo_jwt_secret',
+    JWT_SECRET: process.env.JWT_SECRET,
+    SEP10_CHALLENGE_TTL_SECONDS: parseInt(process.env.SEP10_CHALLENGE_TTL_SECONDS || '300', 10),
 };
 

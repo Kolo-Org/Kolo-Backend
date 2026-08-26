@@ -1,24 +1,30 @@
 import * as StellarSdk from '@stellar/stellar-sdk';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env';
+import crypto from 'crypto';
+import { redisClient } from '../lib/redis';
 
 export class AuthService {
     private serverKeypair: StellarSdk.Keypair;
     private homeDomain: string;
     private networkPassphrase: string;
+    private horizon: StellarSdk.Horizon.Server;
 
     constructor() {
         if (!config.SEP10_SERVER_SECRET) {
-            // For testing, fallback to a random keypair if not configured, though a real app should persist this
-            this.serverKeypair = StellarSdk.Keypair.random();
-        } else {
-            this.serverKeypair = StellarSdk.Keypair.fromSecret(config.SEP10_SERVER_SECRET);
+            throw new Error('SEP10_SERVER_SECRET is required');
         }
+        this.serverKeypair = StellarSdk.Keypair.fromSecret(config.SEP10_SERVER_SECRET);
         
         this.homeDomain = config.SEP10_HOME_DOMAIN;
         this.networkPassphrase = config.STELLAR_NETWORK === 'TESTNET'
             ? StellarSdk.Networks.TESTNET
             : StellarSdk.Networks.PUBLIC;
+        this.horizon = new StellarSdk.Horizon.Server(
+            config.STELLAR_NETWORK === 'PUBLIC'
+                ? 'https://horizon.stellar.org'
+                : 'https://horizon-testnet.stellar.org'
+        );
     }
 
     /**
@@ -29,7 +35,7 @@ export class AuthService {
             this.serverKeypair,
             clientPublicKey,
             this.homeDomain,
-            300, // Challenge is valid for 5 minutes
+            config.SEP10_CHALLENGE_TTL_SECONDS || 300,
             this.networkPassphrase,
             this.homeDomain
         );
@@ -40,7 +46,17 @@ export class AuthService {
     /**
      * Verifies the client's signed SEP-10 challenge transaction and returns a JWT if valid.
      */
-    public verifyChallengeAndGenerateToken(transactionXdr: string): { token: string, account: string } {
+    public async verifyChallengeAndGenerateToken(transactionXdr: string): Promise<{ token: string, account: string }> {
+        // Replay protection: hash the XDR to use as a unique ID
+        const txHash = crypto.createHash('sha256').update(transactionXdr).digest('hex');
+        const redisKey = `sep10:challenge:${txHash}`;
+        
+        // Attempt to atomically set the key if it doesn't exist. If not set, it's a replay.
+        const acquired = await redisClient.set(redisKey, 'consumed', 'EX', config.SEP10_CHALLENGE_TTL_SECONDS || 300, 'NX');
+        if (!acquired) {
+            throw new Error('Challenge transaction has already been consumed');
+        }
+
         const transaction = StellarSdk.WebAuth.readChallengeTx(
             transactionXdr,
             this.serverKeypair.publicKey(),
@@ -49,12 +65,29 @@ export class AuthService {
             this.homeDomain
         );
 
+        let signers;
+        let threshold = 1;
+        try {
+            const account = await this.horizon.loadAccount(transaction.clientAccountID);
+            signers = account.signers;
+            // Use low threshold for SEP-10 or 1 if not set
+            threshold = account.thresholds.low_threshold || 1;
+        } catch (error: any) {
+            if (error.response && error.response.status === 404) {
+                signers = [{ key: transaction.clientAccountID, weight: 1, type: 'ed25519_public_key' }];
+                threshold = 1;
+            } else {
+                throw error;
+            }
+        }
+
         // Verify the threshold, throwing an error if invalid
-        StellarSdk.WebAuth.verifyChallengeTxSigners(
+        StellarSdk.WebAuth.verifyChallengeTxThreshold(
             transactionXdr,
             this.serverKeypair.publicKey(),
             this.networkPassphrase,
-            [transaction.clientAccountID], // The client's public key who requested the challenge
+            threshold,
+            signers as any,
             this.homeDomain,
             this.homeDomain
         );
@@ -63,7 +96,7 @@ export class AuthService {
         // Generate a JWT for the authenticated client.
         const token = jwt.sign(
             { sub: transaction.clientAccountID },
-            config.JWT_SECRET,
+            config.JWT_SECRET as string,
             { expiresIn: '24h' }
         );
 
