@@ -3,6 +3,7 @@ import { spawnSync } from 'child_process';
 import { StrKey } from '@stellar/stellar-sdk';
 import botRoutes from './routes/bot.routes';
 import adminRoutes from './routes/admin.routes';
+import authRoutes from './routes/auth.routes';
 import { config } from './config/env';
 import { startWorker } from './workers/message.worker';
 import { startSorobanDeploymentWorker } from './workers/soroban-deployment.worker';
@@ -66,10 +67,12 @@ app.use(express.json({
 
 app.use('/api', botRoutes);
 app.use('/admin', adminRoutes);
+app.use('/auth', authRoutes);
 
 app.get('/', (req, res) => {
     res.send('Kolo Backend is running');
 });
+
 
 // Centralised error-handling middleware. Express 5 forwards rejected promises
 // from async route handlers here, so any error that slips past a controller's
