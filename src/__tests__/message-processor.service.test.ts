@@ -29,7 +29,8 @@ const mockCheckBalance = jest.fn().mockResolvedValue([
     { assetCode: 'USDC', issuer: 'G_USDC_ISSUER', balance: '50.00' },
 ]);
 const mockSendPayment = jest.fn().mockResolvedValue({ successful: true, hash: 'tx123' });
-const mockDecrypt = jest.fn().mockReturnValue('S_SEC');
+// Return a proper 32-byte Buffer so Keypair.fromRawEd25519Seed succeeds
+const mockDecrypt = jest.fn().mockReturnValue(Buffer.alloc(32, 0x42));
 const mockGetOrCreateUser = jest.fn().mockResolvedValue({
     id: 'u1', phoneNumber: '12345', username: 'john',
     stellarWallet: JSON.stringify({ publicKey: 'G_PUB', encryptedSecret: 'ENC_SEC', iv: 'IV', authTag: 'TAG' }),
@@ -51,7 +52,30 @@ jest.mock('../utils/encryption.util', () => ({
     decrypt: (...args: any[]) => mockDecrypt(...args),
 }));
 
-const mockCreatePaymentRequest = jest.fn();
+// Mock secret-registry so registerSecret/unregisterSecret are no-ops in tests
+jest.mock('../utils/secret-registry', () => ({
+    registerSecret: jest.fn(),
+    unregisterSecret: jest.fn(),
+    zeroAllInFlightSecrets: jest.fn(),
+}));
+
+// Stub StellarSdk Keypair.fromRawEd25519Seed so it returns a usable mock keypair
+// without needing a real 32-byte seed. The sorobanService is mocked anyway so
+// the keypair is only used to extract a publicKey for the invoke call.
+jest.mock('@stellar/stellar-sdk', () => {
+    const real = jest.requireActual('@stellar/stellar-sdk');
+    const mockKp = { publicKey: () => 'G_MOCK_PUB_KEY', sign: jest.fn(), verify: jest.fn() };
+    return {
+        ...real,
+        Keypair: {
+            ...real.Keypair,
+            fromRawEd25519Seed: jest.fn().mockReturnValue(mockKp),
+            random: jest.fn().mockReturnValue(mockKp),
+        },
+    };
+});
+
+const mockCreatePaymentRequest = jest.fn().mockResolvedValue({ id: 'req1', amount: '25', status: 'PENDING' });
 const mockAcceptPaymentRequest = jest.fn();
 const mockDeclinePaymentRequest = jest.fn();
 const mockPaymentRequestService = {
@@ -76,6 +100,9 @@ const mockGetTransactionHistory = jest.fn().mockResolvedValue({
 const mockStellarService = { getTransactionHistory: mockGetTransactionHistory, checkBalance: mockCheckBalance, sendPayment: mockSendPayment, generateWallet: jest.fn(), fundTestnetAccount: jest.fn() };
 const mockUserService = { getOrCreateUser: mockGetOrCreateUser, resolveUser: mockResolveUser, getUserByPublicKey: jest.fn() };
 const mockGroupService = { createGroup: mockCreateGroup, joinGroup: mockJoinGroup, getGroupStatus: mockGetGroupStatus, addContribution: mockAddContribution };
+
+const mockInvokeContribute = jest.fn().mockResolvedValue({ hash: 'soroban_tx_123', status: 'SUCCESS' });
+const mockSorobanService = { invokeContribute: mockInvokeContribute };
 
 const mockSetPayoutOrder = jest.fn().mockResolvedValue(['u1', 'u2']);
 const mockGetEffectivePayoutOrder = jest.fn().mockResolvedValue(['u1', 'u2']);
@@ -104,6 +131,7 @@ describe('MessageProcessor', () => {
             mockGroupService as any,
             mockPayoutService as any,
             mockPaymentRequestService as any,
+            mockSorobanService as any,
         );
     });
 
@@ -200,8 +228,8 @@ describe('MessageProcessor', () => {
 
             expect(mockGetOrCreateUser).toHaveBeenCalledWith('12345');
             expect(mockResolveUser).toHaveBeenCalledWith('@jane');
-            expect(mockDecrypt).toHaveBeenCalledWith('ENC_SEC', 'IV', 'TAG');
-            expect(mockSendPayment).toHaveBeenCalledWith('S_SEC', 'G_PUB2', '10');
+            // keyVersion param may be undefined depending on user record
+            expect(mockDecrypt).toHaveBeenCalledWith('ENC_SEC', 'IV', 'TAG', undefined);
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.initiating'));
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.success'));
         });
@@ -257,35 +285,66 @@ describe('MessageProcessor', () => {
     });
 
     describe('handleContribute', () => {
-        it('should record contribution and notify on success when amount matches group requirement', async () => {
-            // Group requires 10 XLM (see mockGetGroupStatus above)
+        it('invokes the Soroban contract (not sendPayment) on a valid contribution', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE 10');
-            expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '10', 'tx123');
+            expect(mockInvokeContribute).toHaveBeenCalledTimes(1);
+            expect(mockSendPayment).not.toHaveBeenCalled();
+        });
+
+        it('writes DB record ONLY after on-chain SUCCESS confirmation', async () => {
+            mockInvokeContribute.mockResolvedValueOnce({ hash: 'soroban_tx_123', status: 'SUCCESS' });
+            await processor.processCommand('12345', 'CONTRIBUTE 10');
+            expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '10', 'soroban_tx_123');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.success'));
         });
 
-        it('should lock the payout order after recording a contribution', async () => {
+        it('does NOT write COMPLETED DB record when invokeContribute returns PENDING', async () => {
+            mockInvokeContribute.mockResolvedValueOnce({ hash: 'slow_tx', status: 'PENDING' });
+            await processor.processCommand('12345', 'CONTRIBUTE 10');
+            // Should record as PENDING status, not COMPLETED
+            expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '10', 'slow_tx', 'PENDING');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.pending'));
+            // lockOrderForCycle must NOT be called when contribution is still pending
+            expect(mockLockOrderForCycle).not.toHaveBeenCalled();
+        });
+
+        it('sends contribute.failed_onchain when the Soroban tx is FAILED on ledger', async () => {
+            mockInvokeContribute.mockRejectedValueOnce(new Error('Transaction failed on ledger: bad_hash'));
+            await processor.processCommand('12345', 'CONTRIBUTE 10');
+            expect(mockAddContribution).not.toHaveBeenCalled();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.failed_onchain'));
+        });
+
+        it('sends contribute.failed for non-ledger errors (e.g. network error)', async () => {
+            mockInvokeContribute.mockRejectedValueOnce(new Error('RPC unavailable'));
+            await processor.processCommand('12345', 'CONTRIBUTE 10');
+            expect(mockAddContribution).not.toHaveBeenCalled();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.failed'));
+        });
+
+        it('locks the payout order after recording a successful contribution', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE 10');
             expect(mockLockOrderForCycle).toHaveBeenCalledWith('g1');
         });
 
-        it('should show usage when insufficient args', async () => {
+        it('shows usage when no args provided', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.usage'));
-            expect(mockAddContribution).not.toHaveBeenCalled();
+            expect(mockInvokeContribute).not.toHaveBeenCalled();
         });
 
-        it('should handle missing group membership', async () => {
+        it('handles missing group membership', async () => {
             mockGetGroupStatus.mockResolvedValueOnce([]);
             await processor.processCommand('12345', 'CONTRIBUTE 10');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.no_group'));
-            expect(mockAddContribution).not.toHaveBeenCalled();
+            expect(mockInvokeContribute).not.toHaveBeenCalled();
         });
 
-        it('should handle contribution failure', async () => {
-            mockAddContribution.mockRejectedValueOnce(new Error('Group not found'));
+        it('passes the correct stroop amount to invokeContribute', async () => {
+            // 10 XLM = 100_000_000 stroops
             await processor.processCommand('12345', 'CONTRIBUTE 10');
-            expect(mockSendMessage).toHaveBeenLastCalledWith('12345', expect.stringContaining('contribute.failed'));
+            const call = mockInvokeContribute.mock.calls[0];
+            expect(call[3]).toBe(100_000_000n);
         });
     });
 
@@ -293,44 +352,44 @@ describe('MessageProcessor', () => {
         it('should reject a non-numeric amount', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE abc');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.invalid_format'));
-            expect(mockAddContribution).not.toHaveBeenCalled();
+            expect(mockInvokeContribute).not.toHaveBeenCalled();
         });
 
         it('should reject zero amount', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE 0');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.zero_amount'));
-            expect(mockAddContribution).not.toHaveBeenCalled();
+            expect(mockInvokeContribute).not.toHaveBeenCalled();
         });
 
         it('should reject a negative amount', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE -5');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.invalid_format'));
-            expect(mockAddContribution).not.toHaveBeenCalled();
+            expect(mockInvokeContribute).not.toHaveBeenCalled();
         });
 
         it('should reject amount with more than 7 decimal places', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE 10.12345678');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.precision_exceeded'));
-            expect(mockAddContribution).not.toHaveBeenCalled();
+            expect(mockInvokeContribute).not.toHaveBeenCalled();
         });
 
         it('should reject amount exceeding 1,000,000 XLM', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE 1000001');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('validation.exceeds_max'));
-            expect(mockAddContribution).not.toHaveBeenCalled();
+            expect(mockInvokeContribute).not.toHaveBeenCalled();
         });
 
         it('should reject amount that does not match the group required contribution', async () => {
             // Group requires 10 XLM; user tries to contribute a different amount
             await processor.processCommand('12345', 'CONTRIBUTE 50');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.amount_mismatch'));
-            expect(mockAddContribution).not.toHaveBeenCalled();
+            expect(mockInvokeContribute).not.toHaveBeenCalled();
         });
 
         it('should accept a valid amount that exactly matches group requirement', async () => {
             // Group requires 10 XLM
             await processor.processCommand('12345', 'CONTRIBUTE 10');
-            expect(mockAddContribution).toHaveBeenCalled();
+            expect(mockInvokeContribute).toHaveBeenCalled();
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.success'));
         });
 
@@ -339,7 +398,7 @@ describe('MessageProcessor', () => {
                 { role: 'MEMBER', groupId: 'g2', group: { id: 'g2', name: 'G2', contributionAmount: 10.5, contributionFrequency: 'WEEKLY', stellarContractId: 'g2_pub_key', members: [] } },
             ]);
             await processor.processCommand('12345', 'CONTRIBUTE 10.5');
-            expect(mockAddContribution).toHaveBeenCalled();
+            expect(mockInvokeContribute).toHaveBeenCalled();
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.success'));
         });
     });

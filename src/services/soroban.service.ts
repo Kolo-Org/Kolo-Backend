@@ -136,14 +136,23 @@ export class SorobanService {
     }
 
     /**
-     * Signs and submits transaction, polling if needed until confirmation.
+     * Signs and submits a transaction, polling until confirmed or the poll limit
+     * is reached.
+     *
+     * @returns `{ hash, status }` where status is `'SUCCESS'` when confirmed,
+     *   `'PENDING'` when the poll limit expired before confirmation, or throws
+     *   when the network returns an error or the transaction is `FAILED`.
      */
     public async submitTransaction(
         tx: StellarSdk.Transaction,
         signerKeypair: StellarSdk.Keypair,
-        server?: StellarSdk.rpc.Server
-    ): Promise<string> {
+        server?: StellarSdk.rpc.Server,
+        options?: { maxPolls?: number; pollIntervalMs?: number }
+    ): Promise<{ hash: string; status: 'SUCCESS' | 'PENDING' }> {
         const srv = server || this.server;
+        const maxPolls = options?.maxPolls ?? 10;
+        const pollIntervalMs = options?.pollIntervalMs ?? 2000;
+
         tx.sign(signerKeypair);
 
         const response = await srv.sendTransaction(tx);
@@ -159,27 +168,28 @@ export class SorobanService {
         }
 
         if (responseStatus === 'SUCCESS') {
-            return hash;
+            return { hash, status: 'SUCCESS' };
         }
 
         // Poll for confirmation if PENDING or TRY_AGAIN_LATER
         let polls = 0;
-        const maxPolls = 10;
         while (polls < maxPolls) {
             polls++;
-            await new Promise((res) => setTimeout(res, 1000));
+            await new Promise((res) => setTimeout(res, pollIntervalMs));
             const statusRes = await srv.getTransaction(hash);
             const txStatus = (statusRes as any).status as string;
 
             if (txStatus === 'SUCCESS') {
-                return hash;
+                return { hash, status: 'SUCCESS' };
             }
             if (txStatus === 'FAILED') {
                 throw new Error(`Transaction failed on ledger: ${hash}`);
             }
+            // NOT_FOUND or PENDING — keep polling
         }
 
-        return hash;
+        // Poll limit reached without confirmation
+        return { hash, status: 'PENDING' };
     }
 
     /**
@@ -206,7 +216,7 @@ export class SorobanService {
             .build();
 
         tx = await this.simulateAndAssembleTransaction(tx, srv);
-        const txHash = await this.submitTransaction(tx, deployerKeypair, srv);
+        const { hash: txHash } = await this.submitTransaction(tx, deployerKeypair, srv);
         const wasmHash = StellarSdk.hash(wasmBuffer);
 
         return { wasmHash, txHash };
@@ -240,7 +250,7 @@ export class SorobanService {
             .build();
 
         tx = await this.simulateAndAssembleTransaction(tx, srv);
-        const txHash = await this.submitTransaction(tx, deployerKeypair, srv);
+        const { hash: txHash } = await this.submitTransaction(tx, deployerKeypair, srv);
 
         // Derive contract ID from address, salt, and network passphrase
         const preimage = StellarSdk.xdr.HashIdPreimage.envelopeTypeContractId(
@@ -302,7 +312,7 @@ export class SorobanService {
             .build();
 
         tx = await this.simulateAndAssembleTransaction(tx, srv);
-        const txHash = await this.submitTransaction(tx, deployerKeypair, srv);
+        const { hash: txHash } = await this.submitTransaction(tx, deployerKeypair, srv);
 
         return { txHash };
     }
@@ -370,6 +380,127 @@ try {
                 latency,
             });
             throw error;
+        }
+    }
+    /**
+     * Invokes the Soroban contract's `contribute(member, amount)` function.
+     *
+     * The member keypair is required because the Soroban contract enforces
+     * `member.require_auth()` — the member must co-sign the transaction.
+     *
+     * @param memberKeypair  Keypair for the contributing member (signs the tx).
+     * @param contractId     Soroban contract address (C... strkey).
+     * @param memberPublicKey  Stellar G... public key of the member.
+     * @param amountStroops  Contribution amount expressed as stroops (i128).
+     * @param server         Optional RPC server override.
+     * @returns `{ hash, status }` from `submitTransaction()`.
+     */
+    public async invokeContribute(
+        memberKeypair: StellarSdk.Keypair,
+        contractId: string,
+        memberPublicKey: string,
+        amountStroops: bigint,
+        server?: StellarSdk.rpc.Server
+    ): Promise<{ hash: string; status: 'SUCCESS' | 'PENDING' }> {
+        const srv = server || this.server;
+        const account = await srv.getAccount(memberKeypair.publicKey());
+
+        const args = [
+            new StellarSdk.Address(memberPublicKey).toScVal(),
+            StellarSdk.nativeToScVal(amountStroops, { type: 'i128' }),
+        ];
+
+        const invokeOp = StellarSdk.Operation.invokeContractFunction({
+            contract: contractId,
+            function: 'contribute',
+            args,
+        });
+
+        let tx = new StellarSdk.TransactionBuilder(account, {
+            fee: '1000',
+            networkPassphrase: this.getNetworkPassphrase(),
+        })
+            .addOperation(invokeOp)
+            .setTimeout(60)
+            .build();
+
+        tx = await this.simulateAndAssembleTransaction(tx, srv);
+
+        // Poll up to 15 times × 2 seconds = 30 seconds max (per issue requirement)
+        return await this.submitTransaction(tx, memberKeypair, srv, {
+            maxPolls: 15,
+            pollIntervalMs: 2000,
+        });
+    }
+
+    /**
+     * Queries the Soroban contract's `get_contribution(member)` read-only view.
+     *
+     * Uses a simulation (no on-chain submission) so it is free and instant.
+     *
+     * @param contractId      Soroban contract address (C... strkey).
+     * @param memberPublicKey  Stellar G... public key of the member.
+     * @param server          Optional RPC server override.
+     * @returns The member's total contribution this cycle expressed as a bigint
+     *   of stroops. Returns `0n` when the member has no contribution record.
+     */
+    public async queryContribution(
+        contractId: string,
+        memberPublicKey: string,
+        server?: StellarSdk.rpc.Server
+    ): Promise<bigint> {
+        const srv = server || this.server;
+
+        // Build a throwaway account for the simulation — no real account needed
+        // because this is a read-only simulation, not a submission.
+        const dummyAccount = new StellarSdk.Account(memberPublicKey, '0');
+
+        const args = [
+            new StellarSdk.Address(memberPublicKey).toScVal(),
+        ];
+
+        const invokeOp = StellarSdk.Operation.invokeContractFunction({
+            contract: contractId,
+            function: 'get_contribution',
+            args,
+        });
+
+        const tx = new StellarSdk.TransactionBuilder(dummyAccount, {
+            fee: '1000',
+            networkPassphrase: this.getNetworkPassphrase(),
+        })
+            .addOperation(invokeOp)
+            .setTimeout(30)
+            .build();
+
+        const simRes = await srv.simulateTransaction(tx);
+
+        if (StellarSdk.rpc.Api.isSimulationError(simRes)) {
+            // Contract returns an error when the member has never contributed
+            // (e.g., "NotFound" or similar). Treat as zero.
+            return 0n;
+        }
+
+        const results = (simRes as any).results as Array<{ xdr: string }> | undefined;
+        if (!results || results.length === 0) {
+            return 0n;
+        }
+
+        try {
+            const scVal = StellarSdk.xdr.ScVal.fromXDR(results[0].xdr, 'base64');
+            // i128 ScVal: scvI128 contains lo (u64) and hi (i64)
+            if (scVal.switch().name === 'scvI128') {
+                const i128 = scVal.i128();
+                const hi = BigInt(i128.hi().toString());
+                const lo = BigInt(i128.lo().toString());
+                // Reconstruct: hi * 2^64 + lo (treating lo as unsigned)
+                return (hi << 64n) + lo;
+            }
+            // Fallback: try scValToNative for simpler numeric types
+            const native = StellarSdk.scValToNative(scVal);
+            return BigInt(native);
+        } catch {
+            return 0n;
         }
     }
 }

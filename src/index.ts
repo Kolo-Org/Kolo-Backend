@@ -8,6 +8,7 @@ import { config } from './config/env';
 import { startWorker } from './workers/message.worker';
 import { startSorobanDeploymentWorker } from './workers/soroban-deployment.worker';
 import { startKeyRotationWorker } from './workers/key-rotation.worker';
+import { startContractSyncWorker } from './workers/contract-sync.worker';
 import { observabilityService } from './services/observability.service';
 import { zeroAllInFlightSecrets } from './utils/secret-registry';
 
@@ -92,6 +93,7 @@ const server = app.listen(config.PORT, () => {
     startWorker();
     startSorobanDeploymentWorker();
     startKeyRotationWorker();
+    startContractSyncWorker();
 });
 
 

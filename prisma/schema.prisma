@@ -139,3 +139,25 @@ model SecretAccessLog {
   @@index([userId])
   @@index([createdAt])
 }
+
+/// Recorded whenever the contract-sync reconciliation worker detects that a
+/// member's on-chain contribution amount differs from what the backend DB
+/// shows for the current cycle.  Records are append-only and are NEVER
+/// auto-resolved — they must be reviewed and closed by an admin.
+model ReconciliationMismatch {
+  id            String    @id @default(uuid())
+  groupId       String
+  userId        String
+  /// Amount returned by the Soroban contract's get_contribution() (in stroops)
+  onChainAmount Decimal
+  /// Sum of COMPLETED Contribution records for this user+group in the current cycle
+  dbAmount      Decimal
+  detectedAt    DateTime  @default(now())
+  resolvedAt    DateTime?
+  resolvedBy    String?   // userId of the admin who marked it resolved
+
+  @@index([groupId])
+  @@index([userId])
+  @@index([detectedAt])
+  @@index([resolvedAt])
+}

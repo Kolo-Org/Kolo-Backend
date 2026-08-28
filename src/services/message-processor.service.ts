@@ -1,5 +1,7 @@
 import { WhatsAppService } from './whatsapp.service';
 import { StellarService } from './stellar.service';
+import { SorobanService } from './soroban.service';
+import * as StellarSdk from '@stellar/stellar-sdk';
 import { UserService } from './user.service';
 import { GroupService } from './group.service';
 import { PayoutService } from './payout.service';
@@ -14,6 +16,7 @@ import { logSecretAccess } from '../utils/audit-logger';
 export class MessageProcessor {
     private whatsappService: WhatsAppService;
     private stellarService: StellarService;
+    private sorobanService: SorobanService;
     private userService: UserService;
     private groupService: GroupService;
     private payoutService: PayoutService;
@@ -26,9 +29,11 @@ export class MessageProcessor {
         groupService?: GroupService,
         payoutService?: PayoutService,
         paymentRequestService?: PaymentRequestService,
+        sorobanService?: SorobanService,
     ) {
         this.whatsappService = whatsappService ?? new WhatsAppService();
         this.stellarService = stellarService ?? new StellarService();
+        this.sorobanService = sorobanService ?? new SorobanService();
         this.userService = userService ?? new UserService();
         this.groupService = groupService ?? new GroupService();
         this.payoutService = payoutService ?? new PayoutService();
@@ -657,14 +662,14 @@ export class MessageProcessor {
         );
 
         const orderText = order
-            .map((id: string, i: number) => `${i + 1}. ${nameById.get(id) || id}${i === group.currentPayoutIndex ? ' ⬅️ next' : ''}`)
+            .map((id: string, i: number) => `${i + 1}. ${nameById.get(id) || id}${i === (group as any).currentPayoutIndex ? ' ⬅️ next' : ''}`)
             .join('\n');
-        const nextId = order[group.currentPayoutIndex];
+        const nextId = order[(group as any).currentPayoutIndex];
         const next = nextId ? (nameById.get(nextId) || nextId) : 'N/A';
 
         await this.whatsappService.sendMessage(from, t('payout.status', lang, {
             name: group.name,
-            cycle: group.totalCycles + 1,
+            cycle: (group as any).totalCycles + 1,
             next,
             order: orderText,
         }));
@@ -771,7 +776,7 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, t('send.no_wallet', lang));
         }
         if (!group.stellarContractId) {
-            return await this.whatsappService.sendMessage(from, t('error.generic', lang, { message: 'Group has no receiving wallet configured.' }));
+            return await this.whatsappService.sendMessage(from, t('error.generic', lang, { message: 'Group has no Soroban contract configured.' }));
         }
 
         const senderWallet = JSON.parse(user.stellarWallet);
@@ -780,16 +785,45 @@ export class MessageProcessor {
         try {
             senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag, senderWallet.keyVersion || user.encryptionKeyVersion);
             registerSecret(senderSecret);
-            const recipientPublicKey = group.stellarContractId;
+
+            const memberKeypair = StellarSdk.Keypair.fromRawEd25519Seed(senderSecret);
+            const memberPublicKey = memberKeypair.publicKey();
+
+            // Convert XLM amount (decimal) to stroops (i128) for the Soroban contract.
+            // 1 XLM = 10_000_000 stroops.
+            const amountStroops = BigInt(Math.round(parseFloat(amountStr) * 10_000_000));
 
             await this.whatsappService.sendMessage(
                 from,
                 t('contribute.initiating', lang, { amount: amountStr, groupName: group.name }),
             );
-            
-            const txResponse = await this.stellarService.sendPayment(senderSecret, recipientPublicKey, amountStr);
-            const txHash = txResponse.hash || ('fallback_tx_' + Date.now());
-            
+
+            // ── Contract-first contribution flow ─────────────────────────────────
+            // We invoke the Soroban contract's contribute() and only write to the
+            // DB after on-chain confirmation.  This keeps both sources of truth
+            // consistent; the reconciliation worker will detect any divergence
+            // that slips through a crash between confirmation and the DB write.
+            const { hash: txHash, status } = await this.sorobanService.invokeContribute(
+                memberKeypair,
+                group.stellarContractId,
+                memberPublicKey,
+                amountStroops,
+            );
+
+            if (status === 'PENDING') {
+                // Transaction submitted but not confirmed within 30 s.
+                // Record as PENDING so the reconciliation worker can detect
+                // whether it eventually landed on-chain.
+                await this.groupService.addContribution(user.id, group.id, amountStr, txHash, 'PENDING');
+                await this.whatsappService.sendMessage(
+                    from,
+                    t('contribute.pending', lang, { hash: txHash }),
+                );
+                await logSecretAccess(user.id, 'CONTRIBUTE', false, 'Transaction pending confirmation');
+                return;
+            }
+
+            // status === 'SUCCESS': confirmed on-chain — now safe to write DB record.
             await this.groupService.addContribution(user.id, group.id, amountStr, txHash);
             // The first contribution of a cycle locks the payout order — the creator
             // can no longer reorder once the rotation is underway.
@@ -800,10 +834,19 @@ export class MessageProcessor {
             );
             await logSecretAccess(user.id, 'CONTRIBUTE', true);
         } catch (e: any) {
-            await this.whatsappService.sendMessage(
-                from,
-                t('contribute.failed', lang, { message: e.message }),
-            );
+            // Distinguish a contract-level FAILED transaction from a network error.
+            const isTxFailed = e?.message?.includes('Transaction failed on ledger');
+            if (isTxFailed) {
+                await this.whatsappService.sendMessage(
+                    from,
+                    t('contribute.failed_onchain', lang, { message: e.message }),
+                );
+            } else {
+                await this.whatsappService.sendMessage(
+                    from,
+                    t('contribute.failed', lang, { message: e.message }),
+                );
+            }
             await logSecretAccess(user.id, 'CONTRIBUTE', false, e.message);
         } finally {
             if (senderSecret) {
