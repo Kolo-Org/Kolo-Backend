@@ -5,6 +5,7 @@ import * as StellarSdk from '@stellar/stellar-sdk';
 import { UserService } from './user.service';
 import { GroupService } from './group.service';
 import { PayoutService } from './payout.service';
+import { GroupExitService, GroupExitError } from './group-exit.service';
 import { PaymentRequestService, PaymentRequestError } from './payment-request.service';
 import { scheduleRequestCompletion, scheduleRequestExpiry } from '../queue/payment-request.queue';
 import { decrypt } from '../utils/encryption.util';
@@ -21,6 +22,7 @@ export class MessageProcessor {
     private groupService: GroupService;
     private payoutService: PayoutService;
     private paymentRequestService: PaymentRequestService;
+    private groupExitService: GroupExitService;
 
     constructor(
         whatsappService?: WhatsAppService,
@@ -30,6 +32,7 @@ export class MessageProcessor {
         payoutService?: PayoutService,
         paymentRequestService?: PaymentRequestService,
         sorobanService?: SorobanService,
+        groupExitService?: GroupExitService,
     ) {
         this.whatsappService = whatsappService ?? new WhatsAppService();
         this.stellarService = stellarService ?? new StellarService();
@@ -38,6 +41,8 @@ export class MessageProcessor {
         this.groupService = groupService ?? new GroupService();
         this.payoutService = payoutService ?? new PayoutService();
         this.paymentRequestService = paymentRequestService ?? new PaymentRequestService(this.stellarService);
+        this.groupExitService = groupExitService
+            ?? new GroupExitService(this.payoutService, this.sorobanService, this.whatsappService);
     }
 
     /**
@@ -94,6 +99,10 @@ export class MessageProcessor {
                 return await this.handleInviteMember(from, tokens.slice(2));
             } else if (cmd1 === 'GROUP' && cmd2 === 'STATUS') {
                 return await this.handleGroupStatus(from, tokens.slice(2));
+            } else if (cmd1 === 'LEAVE' && cmd2 === 'GROUP') {
+                return await this.handleLeaveGroup(from, tokens.slice(2));
+            } else if (cmd1 === 'KICK') {
+                return await this.handleKickMember(from, tokens.slice(1));
             } else if (cmd1 === 'PAYOUT') {
                 return await this.handlePayoutCommand(from, cmd2, tokens.slice(2));
             }
@@ -596,6 +605,51 @@ export class MessageProcessor {
         await this.whatsappService.sendMessage(from, statusText.trim());
     }
 
+    private async handleLeaveGroup(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language ?? 'en';
+
+        if (args.length < 1) {
+            return await this.whatsappService.sendMessage(from, t('leave_group.usage', lang));
+        }
+        const groupId = args[0];
+
+        try {
+            await this.groupExitService.leaveGroup(user.id, groupId);
+            return await this.whatsappService.sendMessage(from, t('leave_group.success', lang));
+        } catch (e: any) {
+            if (e instanceof GroupExitError) {
+                return await this.whatsappService.sendMessage(from, t(`group_exit.error_${e.code}`, lang));
+            }
+            return await this.whatsappService.sendMessage(from, t('leave_group.failed', lang, { message: e.message }));
+        }
+    }
+
+    private async handleKickMember(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language ?? 'en';
+
+        if (args.length < 2) {
+            return await this.whatsappService.sendMessage(from, t('kick_member.usage', lang));
+        }
+        const [target, groupId] = args;
+
+        const resolved = await this.userService.resolveUser(target);
+        if (!resolved) {
+            return await this.whatsappService.sendMessage(from, t('group_exit.error_target_not_found', lang, { target }));
+        }
+
+        try {
+            await this.groupExitService.kickMember(user.id, groupId, resolved.id);
+            return await this.whatsappService.sendMessage(from, t('kick_member.success', lang, { target }));
+        } catch (e: any) {
+            if (e instanceof GroupExitError) {
+                return await this.whatsappService.sendMessage(from, t(`group_exit.error_${e.code}`, lang, { target }));
+            }
+            return await this.whatsappService.sendMessage(from, t('kick_member.failed', lang, { message: e.message }));
+        }
+    }
+
     private async handlePayoutCommand(from: string, sub: string, args: string[]) {
         switch (sub) {
             case 'ORDER':
@@ -758,6 +812,10 @@ export class MessageProcessor {
         }
 
         const group = memberships[0].group;
+
+        if ((group as any).isPaused) {
+            return await this.whatsappService.sendMessage(from, t('contribute.group_paused', lang, { groupName: group.name }));
+        }
 
         // Enforce exact match against the group's required contribution amount.
         // Savings circles (Ajo/Esusu) require every member to contribute the

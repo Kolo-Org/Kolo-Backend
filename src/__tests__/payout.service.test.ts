@@ -391,6 +391,128 @@ describe('PayoutService', () => {
         });
     });
 
+    describe('refundMember', () => {
+        it('sends a treasury transfer for a positive net position and returns the tx hash', async () => {
+            const group = {
+                id: 'g1',
+                members: [makeMember('u1', 'CREATOR'), makeMember('u2', 'MEMBER')],
+            };
+            prisma.savingsGroup.findUnique.mockResolvedValueOnce(group);
+
+            const result = await payoutService.refundMember('g1', 'u2', '15');
+
+            expect(mockSorobanPayout).toHaveBeenCalledWith('TEST_TREASURY_SECRET', 'PUB_u2', '15');
+            expect(result).toEqual({ hash: 'tx_hash_1' });
+        });
+
+        it('is a no-op for a zero or negative amount', async () => {
+            const result = await payoutService.refundMember('g1', 'u2', '0');
+
+            expect(result).toBeNull();
+            expect(prisma.savingsGroup.findUnique).not.toHaveBeenCalled();
+            expect(mockSorobanPayout).not.toHaveBeenCalled();
+        });
+
+        it('throws when the member has no configured wallet', async () => {
+            const group = {
+                id: 'g1',
+                members: [makeMember('u1', 'CREATOR', { stellarWallet: null })],
+            };
+            prisma.savingsGroup.findUnique.mockResolvedValueOnce(group);
+
+            await expect(payoutService.refundMember('g1', 'u1', '10')).rejects.toThrow(
+                'has no configured wallet',
+            );
+        });
+
+        it('throws when no treasury signer is configured', async () => {
+            const group = {
+                id: 'g1',
+                members: [makeMember('u1', 'CREATOR')],
+            };
+            prisma.savingsGroup.findUnique.mockResolvedValueOnce(group);
+            const original = config.GROUP_TREASURY_SECRET;
+            config.GROUP_TREASURY_SECRET = '';
+
+            await expect(payoutService.refundMember('g1', 'u1', '10')).rejects.toThrow(
+                'No treasury signer configured',
+            );
+
+            config.GROUP_TREASURY_SECRET = original;
+        });
+    });
+
+    describe('removeMemberFromOrder', () => {
+        it('drops the exited member from an explicit payout order, keeping the index valid', async () => {
+            const group = {
+                id: 'g1',
+                payoutOrder: ['u1', 'u2', 'u3'],
+                currentPayoutIndex: 1,
+                members: [makeMember('u1', 'CREATOR'), makeMember('u2', 'MEMBER'), makeMember('u3', 'MEMBER')],
+            };
+            prisma.savingsGroup.findUnique.mockResolvedValueOnce(group);
+
+            const result = await payoutService.removeMemberFromOrder('g1', 'u3');
+
+            expect(result).toEqual(['u1', 'u2']);
+            expect(prisma.savingsGroup.update).toHaveBeenCalledWith({
+                where: { id: 'g1' },
+                data: { payoutOrder: ['u1', 'u2'], currentPayoutIndex: 1 },
+            });
+        });
+
+        it('clamps the index when the removed member was at or past the end of the order', async () => {
+            const group = {
+                id: 'g1',
+                payoutOrder: ['u1', 'u2', 'u3'],
+                currentPayoutIndex: 2,
+                members: [makeMember('u1', 'CREATOR'), makeMember('u2', 'MEMBER'), makeMember('u3', 'MEMBER')],
+            };
+            prisma.savingsGroup.findUnique.mockResolvedValueOnce(group);
+
+            const result = await payoutService.removeMemberFromOrder('g1', 'u3');
+
+            expect(result).toEqual(['u1', 'u2']);
+            expect(prisma.savingsGroup.update).toHaveBeenCalledWith({
+                where: { id: 'g1' },
+                data: { payoutOrder: ['u1', 'u2'], currentPayoutIndex: 1 },
+            });
+        });
+
+        it('materializes the default join order before removing when payoutOrder is null', async () => {
+            const group = {
+                id: 'g1',
+                payoutOrder: null,
+                currentPayoutIndex: 0,
+                members: [makeMember('u1', 'CREATOR'), makeMember('u2', 'MEMBER')],
+            };
+            prisma.savingsGroup.findUnique.mockResolvedValueOnce(group);
+
+            const result = await payoutService.removeMemberFromOrder('g1', 'u1');
+
+            expect(result).toEqual(['u2']);
+            expect(prisma.savingsGroup.update).toHaveBeenCalledWith({
+                where: { id: 'g1' },
+                data: { payoutOrder: ['u2'], currentPayoutIndex: 0 },
+            });
+        });
+
+        it('is a no-op when the member is not part of the order', async () => {
+            const group = {
+                id: 'g1',
+                payoutOrder: ['u1', 'u2'],
+                currentPayoutIndex: 0,
+                members: [makeMember('u1', 'CREATOR'), makeMember('u2', 'MEMBER')],
+            };
+            prisma.savingsGroup.findUnique.mockResolvedValueOnce(group);
+
+            const result = await payoutService.removeMemberFromOrder('g1', 'u-ghost');
+
+            expect(result).toEqual(['u1', 'u2']);
+            expect(prisma.savingsGroup.update).not.toHaveBeenCalled();
+        });
+    });
+
     describe('processCycleEnd', () => {
         it('pays out automatically when every member has contributed', async () => {
             const group = {

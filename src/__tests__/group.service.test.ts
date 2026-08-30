@@ -129,17 +129,17 @@ describe('GroupService', () => {
     });
 
     describe('getGroupStatus', () => {
-        it('should return memberships for a given user', async () => {
+        it('should return active memberships for a given user, excluding left members from nested groups', async () => {
             const mockMemberships = [{ id: 'm1', group: { name: 'G1' } }];
             prismaClientMock.groupMember.findMany.mockResolvedValueOnce(mockMemberships);
 
             const result = await groupService.getGroupStatus('u1');
 
             expect(prismaClientMock.groupMember.findMany).toHaveBeenCalledWith({
-                where: { userId: 'u1' },
+                where: { userId: 'u1', status: { not: 'LEFT' } },
                 include: {
                     group: {
-                        include: { members: { include: { user: true } } }
+                        include: { members: { where: { status: { not: 'LEFT' } }, include: { user: true } } }
                     }
                 }
             });
@@ -158,7 +158,7 @@ describe('GroupService', () => {
             const result = await groupService.getMembersByGroup('g1');
 
             expect(prismaClientMock.groupMember.findMany).toHaveBeenCalledWith({
-                where: { groupId: 'g1' },
+                where: { groupId: 'g1', status: { not: 'LEFT' } },
                 include: { user: true }
             });
             expect(result).toEqual(mockMembers);
@@ -171,7 +171,7 @@ describe('GroupService', () => {
             const result = await groupService.getMembersByGroup('g-empty');
 
             expect(prismaClientMock.groupMember.findMany).toHaveBeenCalledWith({
-                where: { groupId: 'g-empty' },
+                where: { groupId: 'g-empty', status: { not: 'LEFT' } },
                 include: { user: true }
             });
             expect(result).toEqual([]);

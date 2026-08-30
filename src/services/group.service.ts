@@ -96,10 +96,10 @@ export class GroupService {
 
     public async getGroupStatus(userId: string) {
         return await prisma.groupMember.findMany({
-            where: { userId },
+            where: { userId, status: { not: 'LEFT' } },
             include: {
                 group: {
-                    include: { members: { include: { user: true } } }
+                    include: { members: { where: { status: { not: 'LEFT' } }, include: { user: true } } }
                 }
             }
         });
@@ -107,7 +107,7 @@ export class GroupService {
 
     public async getMembersByGroup(groupId: string) {
         return await prisma.groupMember.findMany({
-            where: { groupId },
+            where: { groupId, status: { not: 'LEFT' } },
             include: { user: true }
         });
     }

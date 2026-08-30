@@ -245,6 +245,65 @@ export class PayoutService {
         return this.executePayout(groupId, String(partialAmount));
     }
 
+    /**
+     * Sends a one-off Stellar transfer from the group treasury to a member —
+     * used to settle a positive net position (totalContributed - totalReceived)
+     * when the member exits the group. Unlike executePayout(), this does not
+     * touch the rotation index, cycle count, or Payout table: it's a settlement,
+     * not a rotation payout.
+     */
+    public async refundMember(groupId: string, userId: string, amount: string): Promise<{ hash: string } | null> {
+        if (parseFloat(amount) <= 0) return null;
+
+        const group = await prisma.savingsGroup.findUnique({
+            where: { id: groupId },
+            include: { members: { include: { user: true } } },
+        });
+        if (!group) throw new Error('Group not found');
+
+        const member = group.members.find((m: any) => m.userId === userId);
+        if (!member?.user?.stellarWallet) {
+            throw new Error(`Member ${userId} has no configured wallet; cannot process refund.`);
+        }
+
+        if (!config.GROUP_TREASURY_SECRET) {
+            throw new Error('No treasury signer configured — set GROUP_TREASURY_SECRET to enable refunds.');
+        }
+
+        const recipientPublicKey = JSON.parse(member.user.stellarWallet).publicKey;
+        const { hash } = await (this.sorobanService as any).payout(config.GROUP_TREASURY_SECRET, recipientPublicKey, amount);
+
+        return { hash };
+    }
+
+    /**
+     * Removes an exited member from the payout rotation, materializing the
+     * default join order into an explicit payoutOrder first if none was set.
+     * The current payout index is clamped so it still points at a valid
+     * (or the last) position in the shortened order.
+     */
+    public async removeMemberFromOrder(groupId: string, exitedUserId: string): Promise<string[]> {
+        const group = await prisma.savingsGroup.findUnique({
+            where: { id: groupId },
+            include: { members: { orderBy: { joinedAt: 'asc' } } },
+        });
+        if (!group) throw new Error('Group not found');
+
+        const currentOrder = this.resolveOrder(group);
+        if (!currentOrder.includes(exitedUserId)) return currentOrder;
+
+        const newOrder = currentOrder.filter((id) => id !== exitedUserId);
+        const currentIndex = (group as any).currentPayoutIndex ?? 0;
+        const newIndex = newOrder.length === 0 ? 0 : Math.min(currentIndex, newOrder.length - 1);
+
+        await prisma.savingsGroup.update({
+            where: { id: groupId },
+            data: { payoutOrder: newOrder, currentPayoutIndex: newIndex },
+        });
+
+        return newOrder;
+    }
+
     public async executePayout(groupId: string, amountOverride?: string): Promise<any> {
         const group = await prisma.savingsGroup.findUnique({
             where: { id: groupId },

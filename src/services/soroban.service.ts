@@ -434,6 +434,52 @@ try {
     }
 
     /**
+     * Invokes the Soroban contract's `remove_member(member)` function, taking
+     * an exiting or kicked member out of the contract's on-chain member list.
+     *
+     * Signed by the group admin/treasury keypair rather than the member —
+     * a kicked member cannot be relied on to co-sign their own removal, so
+     * the backend acts as the authorizing party for both LEAVE and KICK.
+     *
+     * @param adminKeypair    Keypair authorized to manage contract membership (signs the tx).
+     * @param contractId      Soroban contract address (C... strkey).
+     * @param memberPublicKey  Stellar G... public key of the member being removed.
+     * @param server          Optional RPC server override.
+     * @returns `{ hash, status }` from `submitTransaction()`.
+     */
+    public async removeMember(
+        adminKeypair: StellarSdk.Keypair,
+        contractId: string,
+        memberPublicKey: string,
+        server?: StellarSdk.rpc.Server
+    ): Promise<{ hash: string; status: 'SUCCESS' | 'PENDING' }> {
+        const srv = server || this.server;
+        const account = await srv.getAccount(adminKeypair.publicKey());
+
+        const args = [
+            new StellarSdk.Address(memberPublicKey).toScVal(),
+        ];
+
+        const invokeOp = StellarSdk.Operation.invokeContractFunction({
+            contract: contractId,
+            function: 'remove_member',
+            args,
+        });
+
+        let tx = new StellarSdk.TransactionBuilder(account, {
+            fee: '1000',
+            networkPassphrase: this.getNetworkPassphrase(),
+        })
+            .addOperation(invokeOp)
+            .setTimeout(30)
+            .build();
+
+        tx = await this.simulateAndAssembleTransaction(tx, srv);
+
+        return await this.submitTransaction(tx, adminKeypair, srv);
+    }
+
+    /**
      * Queries the Soroban contract's `get_contribution(member)` read-only view.
      *
      * Uses a simulation (no on-chain submission) so it is free and instant.

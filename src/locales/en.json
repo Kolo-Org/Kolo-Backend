@@ -55,6 +55,25 @@
         "header": "*Your Groups:*\n\n",
         "entry": "*{{name}}*\nTarget: {{amount}} XLM ({{frequency}})\nRole: {{role}}\nMembers: {{count}}\n\n"
     },
+    "leave_group": {
+        "usage": "Usage: LEAVE GROUP <groupId>",
+        "success": "✅ You have left the group.",
+        "failed": "❌ Failed to leave group: {{message}}"
+    },
+    "kick_member": {
+        "usage": "Usage: KICK <@username or phone> <groupId>",
+        "success": "✅ {{target}} has been removed from the group.",
+        "failed": "❌ Failed to remove member: {{message}}"
+    },
+    "group_exit": {
+        "error_group_not_found": "Error: Group not found.",
+        "error_not_a_member": "Error: You are not a member of that group.",
+        "error_already_left": "Error: That member has already left the group.",
+        "error_payout_received": "Error: This member cannot leave — they already received a payout this cycle.",
+        "error_not_creator": "Error: Only the group creator can kick a member.",
+        "error_target_not_found": "Error: Could not find user {{target}}.",
+        "error_cannot_kick_self": "Error: You can't kick yourself — use LEAVE GROUP instead."
+    },
     "payout": {
         "usage": "Usage: PAYOUT <ORDER|STATUS|WAIT|PROCEED|SKIP>",
         "no_group": "Error: You are not part of any group.",
@@ -77,6 +96,7 @@
         "usage": "Usage: CONTRIBUTE <amount>",
         "no_group": "Error: You are not part of any group.",
         "amount_mismatch": "❌ Contribution must be exactly {{required}} XLM as required by this group.",
+        "group_paused": "❌ \"{{groupName}}\" is paused — it needs at least 2 members before contributions can resume.",
         "initiating": "[CONTRIBUTE] Initiating contribution of {{amount}} XLM to \"{{groupName}}\"...",
         "success": "✅ Successfully contributed {{amount}} XLM to \"{{groupName}}\"!",
         "failed": "❌ Contribution failed: {{message}}"
@@ -93,7 +113,7 @@
         "success": "✅ Successfully withdrew {{amount}} XLM from \"{{groupName}}\" pool! (MOCKED)"
     },
     "help": {
-        "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\n\n_Payout Rotation_\nPAYOUT ORDER <@user1> <@user2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@user>\n\n_Support_\nHELP\nSUPPORT"
+        "text": "*Kolo Commands:*\n\n_Account_\nBALANCE\nBALANCE <asset>\nHISTORY\nPROFILE\n\n_Payments_\nSEND <amount> <@user>\nREQUEST <amount> <@user>\n\n_Savings Groups_\nCREATE GROUP <name> <amount> <frequency>\nJOIN GROUP <groupId>\nINVITE MEMBER <@user>\nGROUP STATUS\nCONTRIBUTE <amount>\nWITHDRAW <amount>\nLEAVE GROUP <groupId>\nKICK <@user> <groupId>\n\n_Payout Rotation_\nPAYOUT ORDER <@user1> <@user2> ...\nPAYOUT STATUS\nPAYOUT WAIT\nPAYOUT PROCEED\nPAYOUT SKIP <@user>\n\n_Support_\nHELP\nSUPPORT"
     },
     "unknown": {
         "command": "I didn't understand that command. Send HELP to see available commands."

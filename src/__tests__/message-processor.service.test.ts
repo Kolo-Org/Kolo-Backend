@@ -1,4 +1,5 @@
 import { MessageProcessor } from '../services/message-processor.service';
+import { GroupExitError } from '../services/group-exit.service';
 
 // Mock locale.service so tests never depend on i18next initialisation.
 // t() returns "<key>|<serialised-params>" making assertions precise and language-agnostic.
@@ -119,6 +120,13 @@ const mockPayoutService = {
     skipDefaultingMember: mockSkipDefaultingMember,
 };
 
+const mockLeaveGroup = jest.fn().mockResolvedValue({ member: { userId: 'u1' }, groupPaused: false });
+const mockKickMember = jest.fn().mockResolvedValue({ member: { userId: 'u2' }, groupPaused: false });
+const mockGroupExitService = {
+    leaveGroup: mockLeaveGroup,
+    kickMember: mockKickMember,
+};
+
 describe('MessageProcessor', () => {
     let processor: MessageProcessor;
 
@@ -132,6 +140,7 @@ describe('MessageProcessor', () => {
             mockPayoutService as any,
             mockPaymentRequestService as any,
             mockSorobanService as any,
+            mockGroupExitService as any,
         );
     });
 
@@ -515,6 +524,76 @@ describe('MessageProcessor', () => {
             mockGetGroupStatus.mockResolvedValueOnce([]);
             await processor.processCommand('12345', 'GROUP STATUS');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('group_status.no_groups'));
+        });
+    });
+
+    describe('handleLeaveGroup', () => {
+        it('should show usage when missing groupId', async () => {
+            await processor.processCommand('12345', 'LEAVE GROUP');
+            expect(mockLeaveGroup).not.toHaveBeenCalled();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('leave_group.usage'));
+        });
+
+        it('should leave the group', async () => {
+            await processor.processCommand('12345', 'LEAVE GROUP g1');
+            expect(mockLeaveGroup).toHaveBeenCalledWith('u1', 'g1');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('leave_group.success'));
+        });
+
+        it('should surface a typed exit error', async () => {
+            mockLeaveGroup.mockRejectedValueOnce(new GroupExitError('payout_received'));
+            await processor.processCommand('12345', 'LEAVE GROUP g1');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('group_exit.error_payout_received'));
+        });
+
+        it('should surface an unexpected error', async () => {
+            mockLeaveGroup.mockRejectedValueOnce(new Error('DB unavailable'));
+            await processor.processCommand('12345', 'LEAVE GROUP g1');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('leave_group.failed'));
+        });
+    });
+
+    describe('handleKickMember', () => {
+        it('should show usage when missing args', async () => {
+            await processor.processCommand('12345', 'KICK @jane');
+            expect(mockKickMember).not.toHaveBeenCalled();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('kick_member.usage'));
+        });
+
+        it('should reject when the target cannot be resolved', async () => {
+            mockResolveUser.mockResolvedValueOnce(null);
+            await processor.processCommand('12345', 'KICK @ghost g1');
+            expect(mockKickMember).not.toHaveBeenCalled();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('group_exit.error_target_not_found'));
+        });
+
+        it('should kick the resolved member from the group', async () => {
+            await processor.processCommand('12345', 'KICK @jane g1');
+            expect(mockResolveUser).toHaveBeenCalledWith('@jane');
+            expect(mockKickMember).toHaveBeenCalledWith('u1', 'g1', 'u2');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('kick_member.success'));
+        });
+
+        it('should surface a typed exit error', async () => {
+            mockKickMember.mockRejectedValueOnce(new GroupExitError('not_creator'));
+            await processor.processCommand('12345', 'KICK @jane g1');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('group_exit.error_not_creator'));
+        });
+
+        it('should surface an unexpected error', async () => {
+            mockKickMember.mockRejectedValueOnce(new Error('DB unavailable'));
+            await processor.processCommand('12345', 'KICK @jane g1');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('kick_member.failed'));
+        });
+    });
+
+    describe('handleContribute — group paused', () => {
+        it('should block contributions once the group is paused', async () => {
+            mockGetGroupStatus.mockResolvedValueOnce([
+                { role: 'CREATOR', groupId: 'g1', group: { id: 'g1', name: 'G1', contributionAmount: 10, contributionFrequency: 'MONTHLY', isPaused: true, members: [] } },
+            ]);
+            await processor.processCommand('12345', 'CONTRIBUTE 10');
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.group_paused'));
         });
     });
 
