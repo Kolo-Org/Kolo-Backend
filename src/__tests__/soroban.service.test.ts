@@ -210,6 +210,61 @@ describe('SorobanService.invokeContribute()', () => {
     });
 });
 
+// ── removeMember ─────────────────────────────────────────────────────────────
+
+describe('SorobanService.removeMember()', () => {
+    let service: SorobanService;
+    let mockServer: any;
+    let adminKeypair: StellarSdk.Keypair;
+    let memberPublicKey: string;
+    const contractId = 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM';
+
+    beforeEach(() => {
+        adminKeypair = StellarSdk.Keypair.random();
+        memberPublicKey = StellarSdk.Keypair.random().publicKey();
+        service = new SorobanService('https://soroban-testnet.stellar.org');
+        mockServer = {
+            simulateTransaction: jest.fn().mockResolvedValue(makeSimSuccess()),
+            sendTransaction: jest.fn().mockResolvedValue({ status: 'SUCCESS', hash: 'remove_hash_1' }),
+            getTransaction: jest.fn(),
+            getAccount: jest.fn().mockResolvedValue(new StellarSdk.Account(adminKeypair.publicKey(), '50')),
+        };
+        service.server = mockServer;
+    });
+
+    it('builds and submits a remove_member() invocation signed by the admin keypair', async () => {
+        const result = await service.removeMember(adminKeypair, contractId, memberPublicKey, mockServer);
+
+        expect(result).toEqual({ hash: 'remove_hash_1', status: 'SUCCESS' });
+        expect(mockServer.getAccount).toHaveBeenCalledWith(adminKeypair.publicKey());
+        expect(mockServer.simulateTransaction).toHaveBeenCalledTimes(1);
+        expect(mockServer.sendTransaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('forwards PENDING status when polling times out', async () => {
+        mockServer.sendTransaction.mockResolvedValue({ status: 'PENDING', hash: 'remove_slow_hash' });
+        mockServer.getTransaction.mockResolvedValue({ status: 'NOT_FOUND' });
+
+        const origSubmit = service.submitTransaction.bind(service);
+        jest.spyOn(service, 'submitTransaction').mockImplementationOnce(
+            async (tx, keypair, server) => origSubmit(tx, keypair, server, { maxPolls: 2, pollIntervalMs: 0 }),
+        );
+
+        const result = await service.removeMember(adminKeypair, contractId, memberPublicKey, mockServer);
+
+        expect(result).toEqual({ hash: 'remove_slow_hash', status: 'PENDING' });
+    }, 10000);
+
+    it('throws when the on-chain transaction FAILED', async () => {
+        mockServer.sendTransaction.mockResolvedValue({ status: 'PENDING', hash: 'remove_fail_hash' });
+        mockServer.getTransaction.mockResolvedValue({ status: 'FAILED' });
+
+        await expect(
+            service.removeMember(adminKeypair, contractId, memberPublicKey, mockServer),
+        ).rejects.toThrow('Transaction failed on ledger: remove_fail_hash');
+    });
+});
+
 // ── queryContribution ─────────────────────────────────────────────────────────
 
 describe('SorobanService.queryContribution()', () => {

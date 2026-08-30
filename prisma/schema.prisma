@@ -8,23 +8,23 @@ generator client {
 }
 
 model User {
-  id                   String         @id @default(uuid())
+  id                      String           @id @default(uuid())
   // Stores the AES-256-GCM JSON blob produced by encryptField(); plaintext
   // phone numbers never reach the database.
-  phoneNumber          String?
+  phoneNumber             String?
   // HMAC-SHA256 of the plaintext phone number, used for lookups and to
   // enforce uniqueness on encrypted data. Nullable because users without a
   // stored phone number never get a hash.
-  phoneNumberHash      String?        @unique
-  username             String?        @unique
-  stellarWallet        String?        @unique // JSON: {"publicKey":"...","encryptedSecret":"...","iv":"...","authTag":"...", "keyVersion": 1}
-  encryptionKeyVersion Int            @default(1)
-  language             String         @default("en")
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
-  groups               GroupMember[]
-  contributions        Contribution[]
-  sentPaymentRequests  PaymentRequest[] @relation("PaymentRequestRequester")
+  phoneNumberHash         String?          @unique
+  username                String?          @unique
+  stellarWallet           String?          @unique // JSON: {"publicKey":"...","encryptedSecret":"...","iv":"...","authTag":"...", "keyVersion": 1}
+  encryptionKeyVersion    Int              @default(1)
+  language                String           @default("en")
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  groups                  GroupMember[]
+  contributions           Contribution[]
+  sentPaymentRequests     PaymentRequest[] @relation("PaymentRequestRequester")
   receivedPaymentRequests PaymentRequest[] @relation("PaymentRequestResponder")
 }
 
@@ -36,21 +36,32 @@ enum DeploymentStatus {
 }
 
 model SavingsGroup {
-  id                    String           @id @default(uuid())
-  name                  String
-  contributionAmount    Decimal
-  contributionFrequency String // e.g., "WEEKLY", "MONTHLY"
-  stellarContractId     String? // Soroban contract ID once deployed
-  deploymentStatus      DeploymentStatus @default(PENDING)
-  deploymentError       String?
-  currentCycleStart     DateTime?
-  currentCycleEnd       DateTime?
-  bullMqJobId           String?
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  members               GroupMember[]
-  Payout                Payout[]
-  PayoutOrderLog        PayoutOrderLog[]
+  id                     String           @id @default(uuid())
+  name                   String
+  contributionAmount     Decimal
+  contributionFrequency  String // e.g., "WEEKLY", "MONTHLY"
+  stellarContractId      String? // Soroban contract ID once deployed
+  deploymentStatus       DeploymentStatus @default(PENDING)
+  deploymentError        String?
+  currentCycleStart      DateTime?
+  currentCycleEnd        DateTime?
+  bullMqJobId            String?
+  payoutOrder            Json? // Ordered array of member userIds; defaults to join order when null
+  currentPayoutIndex     Int              @default(0)
+  totalCycles            Int              @default(0)
+  payoutOrderLockedAt    DateTime? // Set once the first contribution of a cycle lands; blocks reordering
+  deadlineExtensionsUsed Int              @default(0)
+  // Set when the group drops below the 2-member minimum (see MemberExitLog /
+  // GroupExitService). Blocks new contributions and scheduled reminders until
+  // membership is restored.
+  isPaused               Boolean          @default(false)
+  pausedAt               DateTime?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  members                GroupMember[]
+  Payout                 Payout[]
+  PayoutOrderLog         PayoutOrderLog[]
+  MemberExitLog          MemberExitLog[]
 }
 
 model GroupMember {
@@ -60,7 +71,11 @@ model GroupMember {
   group    SavingsGroup @relation(fields: [groupId], references: [id])
   groupId  String
   role     String       @default("MEMBER") // e.g., "CREATOR", "MEMBER"
+  // ACTIVE or LEFT. Soft-delete marker for voluntary exit / kick — the row is
+  // kept for audit/history rather than removed.
+  status   String       @default("ACTIVE")
   joinedAt DateTime     @default(now())
+  leftAt   DateTime?
 
   @@unique([userId, groupId])
   @@index([userId])
@@ -119,7 +134,7 @@ model PaymentRequest {
   assetCode       String   @default("XLM")
   status          String   @default("PENDING") // PENDING, HOLDING, ACCEPTED, COMPLETING, DECLINED, EXPIRED, COMPLETED
   expiresAt       DateTime
-  balanceId       String?  // Stellar claimable balance ID once the hold is placed
+  balanceId       String? // Stellar claimable balance ID once the hold is placed
   transactionHash String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -131,7 +146,7 @@ model PaymentRequest {
 model SecretAccessLog {
   id           String   @id @default(uuid())
   userId       String
-  operation    String   // "SEND" | "CONTRIBUTE" | "TRUSTLINE" | "KEY_ROTATION"
+  operation    String // "SEND" | "CONTRIBUTE" | "TRUSTLINE" | "KEY_ROTATION"
   success      Boolean
   errorMessage String?
   createdAt    DateTime @default(now())
@@ -154,10 +169,33 @@ model ReconciliationMismatch {
   dbAmount      Decimal
   detectedAt    DateTime  @default(now())
   resolvedAt    DateTime?
-  resolvedBy    String?   // userId of the admin who marked it resolved
+  resolvedBy    String? // userId of the admin who marked it resolved
 
   @@index([groupId])
   @@index([userId])
   @@index([detectedAt])
   @@index([resolvedAt])
+}
+
+/// Append-only settlement/audit record for a member's voluntary exit (LEAVE)
+/// or removal (KICK). One row per exit — never updated.
+model MemberExitLog {
+  id               String       @id @default(uuid())
+  group            SavingsGroup @relation(fields: [groupId], references: [id])
+  groupId          String
+  userId           String // the member who exited
+  /// userId of who triggered the exit — the member themselves for LEAVE, the
+  /// creator for KICK.
+  initiatedBy      String
+  type             String // "LEAVE" | "KICK"
+  totalContributed Decimal
+  totalReceived    Decimal
+  /// totalContributed - totalReceived. Positive is refunded to the member;
+  /// negative is a loss absorbed by the group (never charged back).
+  netOwed          Decimal
+  refundTxHash     String?
+  createdAt        DateTime     @default(now())
+
+  @@index([groupId])
+  @@index([userId])
 }
