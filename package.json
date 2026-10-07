@@ -4,8 +4,8 @@
   "description": "Kolo bot",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/index.ts",
-    "dev": "nodemon src/index.ts",
+    "start": "node init && ts-node src/index.ts",
+    "dev": "node init && nodemon src/index.ts",
     "test": "jest"
   },
   "repository": {

@@ -3,3 +3,4 @@ coverage/
 *.lcov
 coverage-final.json
 clover.xml
+config.bat
